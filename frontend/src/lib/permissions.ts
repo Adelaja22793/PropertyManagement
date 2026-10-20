@@ -7,6 +7,7 @@ export const Permissions = {
   branchesManage: 'Branches.Manage',
   usersView: 'Users.View',
   usersManage: 'Users.Manage',
+  dataExport: 'Data.Export',
   auditView: 'Audit.View',
   propertiesView: 'Properties.View',
   propertiesCreate: 'Properties.Create',

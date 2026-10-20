@@ -3,7 +3,7 @@
 A multi-company property management platform for Nigerian property managers and landlords.
 It follows the design in *Property Management System: Requirements & Technical Design v1.1*.
 
-**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) Phase 3 (properties, units, owners and tenants) the first part of Phase 4 (leases) the first part of Phase 5 (maintenance and vendors), the owner and tenant portals, documents and photos, public listings with enquiries and viewings, operational reports, two-step sign-in, and admin-approved support access. No money features yet: invoices, payments and payouts wait for the accountant and tax adviser to sign off the [finance design](https://claude.ai/code/artifact/59369177-0d67-4085-a6e6-054ed378947e).**
+**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) Phase 3 (properties, units, owners and tenants) the first part of Phase 4 (leases) the first part of Phase 5 (maintenance and vendors), the owner and tenant portals, documents and photos, public listings with enquiries and viewings, operational reports, two-step sign-in, admin-approved support access, and data export. No money features yet: invoices, payments and payouts wait for the accountant and tax adviser to sign off the [finance design](https://claude.ai/code/artifact/59369177-0d67-4085-a6e6-054ed378947e).**
 
 ## What works today
 
@@ -53,6 +53,12 @@ It follows the design in *Property Management System: Requirements & Technical D
 - An Organization Admin approves, declines or ends it under **Team, Support access**. Access starts on approval and ends on its own when the hours run out.
 - While it lasts, support sees the company like a read-only staff member with no identity numbers (NIN, BVN). Any change is refused, and every page they open, every blocked change and each step of the grant is in the company's audit log. Support sees a banner with the end time.
 - Who counts as platform support is set in the database (`AspNetUsers.IsPlatformAdmin`); there is deliberately no screen for it. They must have two-step sign-in on to ask.
+
+### Data export (design 4.8 and 11.4)
+
+- **Everything the company holds.** Under Settings, an Organization Admin downloads a ZIP of CSV files: the organization, its members with names and emails, one file per organization-owned table (built from the database model, so new tables are included automatically), support access grants and the full audit log. Ticking "include uploaded files" adds every stored file.
+- **One person's data**, for when a tenant or owner asks what is held about them. "Download their data" on a tenant gives their record, identity summary, guarantors, screening checks, portal access, leases with charges, notices and inspections, the repairs they reported, and their documents with the files. An owner's gives their record, bank accounts, management agreements, properties owned, portal access and documents.
+- Identity numbers (NIN, BVN) stay encrypted and are left out; only their last four digits are included. Internal columns (row versions, storage keys, token hashes) are left out too. Exports need `Data.Export` (admins only) and each one is recorded in the audit log.
 
 ### Reports (no money yet)
 
@@ -139,7 +145,7 @@ Emails (invitations, password resets) are only logged in development. The person
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 98 unit + 100 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd backend && dotnet test        # 98 unit + 102 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
 cd frontend && npm test          # 45 component and client tests
 cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running; the support test
                                  # marks a user as platform support with docker exec on the mssql container, or PMS_E2E_SQLCMD)
@@ -159,6 +165,8 @@ Each integration test class creates its own database and drops it afterwards.
 | POST | /api/v1/auth/two-factor/setup, /enable, /recovery-codes, /disable | Set up the app, turn on with a code, new codes, turn off with the password |
 | GET, POST | /api/v1/platform/support-grants | Platform support: my requests; ask a company (`organization` = web address name, `reason`, `hours`) |
 | POST | /api/v1/platform/support-grants/{id}/end | Platform support: end access early or withdraw a request |
+| GET | /api/v1/exports/organization | Admin: ZIP of all the organization's data; `includeFiles=true` adds stored files |
+| GET | /api/v1/exports/tenants/{id}, /exports/owners/{id} | Admin: ZIP of everything held about one tenant or owner |
 | GET | /api/v1/support-grants | Admin: requests for this organization |
 | POST | /api/v1/support-grants/{id}/approve, /decline, /revoke | Admin: answer a request or end access |
 | POST | /api/v1/auth/forgot-password, /reset-password | |
@@ -252,6 +260,7 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 - SQL Server Row-Level Security as an extra isolation layer.
 - Platform admin area and subscription billing. Support access is read-only only; a write option needs a decision on what support may change.
 - Organization-defined custom roles (roles are fixed in code for now).
+- Data protection (design 11.4): erasing a person's data and per-record retention periods wait for the data protection adviser, as do the privacy notice and consent wording. Guarantors are included in their tenant's export but have no export of their own yet. Large exports are built while the admin waits; a background job with an emailed link would suit very large companies.
 - The audit table is append-only in code; also deny UPDATE and DELETE to the app's database login.
 - Data Protection keys (which encrypt identity numbers and sign-in cookies) are stored in the `DataProtectionKeys` table. In production also encrypt the keys themselves, for example with `ProtectKeysWithAzureKeyVault` or a certificate, so a database copy alone can't decrypt NIN or BVN.
 - Invoices, payments, receipts, deposits held and owner payouts (rest of Phase 4) wait for the finance design sign-off.
