@@ -1,0 +1,18 @@
+using Microsoft.AspNetCore.Authorization;
+
+namespace PropertyManagement.Api.Authorization;
+
+/// <summary>
+/// Requires the caller's membership in the selected organization to grant a permission.
+/// Fails when no organization is selected, so an endpoint with this attribute is always organization-scoped.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true)]
+public sealed class RequirePermissionAttribute(string permission) : AuthorizeAttribute(PolicyPrefix + permission)
+{
+    public const string PolicyPrefix = "permission:";
+}
+
+public sealed class PermissionRequirement(string permission) : IAuthorizationRequirement
+{
+    public string Permission { get; } = permission;
+}
