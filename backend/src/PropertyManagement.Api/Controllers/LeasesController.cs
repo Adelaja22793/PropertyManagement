@@ -10,7 +10,7 @@ namespace PropertyManagement.Api.Controllers;
 /// <summary>Leases: drafts, activation, renewal and move-out (design 6.5 and 9.3). No money is posted yet.</summary>
 [ApiController]
 [Route("api/v1/leases")]
-public sealed class LeasesController(LeaseService leases) : ControllerBase
+public sealed class LeasesController(LeaseService leases, LeaseRecordsService records) : ControllerBase
 {
     /// <param name="stage">Draft, Upcoming, Active, Expiring, HoldingOver, Renewed, Ended, Terminated or Cancelled.</param>
     /// <param name="endingWithinDays">Active leases whose end date is within this many days, including any already past it.</param>
@@ -59,4 +59,38 @@ public sealed class LeasesController(LeaseService leases) : ControllerBase
     [HttpPost("{id:guid}/end")]
     [RequirePermission(Permissions.Leases.Terminate)]
     public Task<LeaseDetailDto> End(Guid id, EndLeaseRequest request, CancellationToken ct) => leases.EndAsync(id, request, ct);
+
+    // Notices
+
+    [HttpGet("{id:guid}/notices")]
+    [RequirePermission(Permissions.Leases.View)]
+    public Task<IReadOnlyList<LeaseNoticeDto>> Notices(Guid id, CancellationToken ct) => records.ListNoticesAsync(id, ct);
+
+    /// <summary>The suggested expiry date for a notice of this type served on this date.</summary>
+    [HttpGet("{id:guid}/notices/default")]
+    [RequirePermission(Permissions.Leases.View)]
+    public Task<NoticeDefaultDto> NoticeDefault(Guid id, [FromQuery] NoticeType type, [FromQuery] DateOnly? servedOn, CancellationToken ct) =>
+        records.DefaultNoticeAsync(id, type, servedOn, ct);
+
+    [HttpPost("{id:guid}/notices")]
+    [RequirePermission(Permissions.Leases.IssueNotice)]
+    public async Task<ActionResult<LeaseNoticeDto>> ServeNotice(Guid id, ServeNoticeRequest request, CancellationToken ct) =>
+        StatusCode(StatusCodes.Status201Created, await records.ServeNoticeAsync(id, request, ct));
+
+    [HttpPost("{id:guid}/notices/{noticeId:guid}/withdraw")]
+    [RequirePermission(Permissions.Leases.IssueNotice)]
+    public Task<LeaseNoticeDto> WithdrawNotice(Guid id, Guid noticeId, WithdrawNoticeRequest request, CancellationToken ct) =>
+        records.WithdrawNoticeAsync(id, noticeId, request, ct);
+
+    // Inspections
+
+    [HttpGet("{id:guid}/inspections")]
+    [RequirePermission(Permissions.Leases.View)]
+    public Task<LeaseInspectionsDto> Inspections(Guid id, CancellationToken ct) => records.GetInspectionsAsync(id, ct);
+
+    /// <summary>Records or replaces the MoveIn or MoveOut report.</summary>
+    [HttpPut("{id:guid}/inspections/{type}")]
+    [RequirePermission(Permissions.Leases.Create)]
+    public Task<LeaseInspectionDto> SaveInspection(Guid id, InspectionType type, SaveInspectionRequest request, CancellationToken ct) =>
+        records.SaveInspectionAsync(id, type, request, ct);
 }

@@ -238,7 +238,7 @@ public sealed class LeaseTests(ApiFactory factory) : IClassFixture<ApiFactory>, 
         }
         Assert.Equal("Vacant", await OccupancyAsync(unit));
 
-        await factory.Services.GetRequiredService<LeaseOccupancyJob>().RunOnceAsync(CancellationToken.None);
+        await factory.Services.GetRequiredService<LeaseScheduleJob>().RunOnceAsync(CancellationToken.None);
         Assert.Equal("Occupied", await OccupancyAsync(unit));
     }
 

@@ -24,6 +24,8 @@ public static class DependencyInjection
         services.AddScoped<OwnerService>();
         services.AddScoped<TenantService>();
         services.AddScoped<LeaseService>();
+        services.AddScoped<LeaseRecordsService>();
+        services.AddScoped<LeaseReminderService>();
         return services;
     }
 }

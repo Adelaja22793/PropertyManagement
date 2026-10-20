@@ -34,6 +34,9 @@ public interface IAppDbContext
     DbSet<LeaseTenant> LeaseTenants { get; }
     DbSet<LeaseGuarantor> LeaseGuarantors { get; }
     DbSet<LeaseCharge> LeaseCharges { get; }
+    DbSet<LeaseNotice> LeaseNotices { get; }
+    DbSet<LeaseInspection> LeaseInspections { get; }
+    DbSet<LeaseReminder> LeaseReminders { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -43,6 +43,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentOrgani
     public DbSet<LeaseTenant> LeaseTenants => Set<LeaseTenant>();
     public DbSet<LeaseGuarantor> LeaseGuarantors => Set<LeaseGuarantor>();
     public DbSet<LeaseCharge> LeaseCharges => Set<LeaseCharge>();
+    public DbSet<LeaseNotice> LeaseNotices => Set<LeaseNotice>();
+    public DbSet<LeaseInspection> LeaseInspections => Set<LeaseInspection>();
+    public DbSet<LeaseReminder> LeaseReminders => Set<LeaseReminder>();
 
     /// <summary>Data Protection keys used to encrypt identity numbers. Shared by all API instances.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();

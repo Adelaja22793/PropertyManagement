@@ -14,7 +14,7 @@ public sealed class ExceptionHandler(IProblemDetailsService problems, ILogger<Ex
         "already_member", "invitation_pending", "duplicate_branch", "last_admin", "duplicate_code", "duplicate_owner",
         "duplicate_tenant", "approval_pending", "already_decided", "agreement_overlap", "portal_exists", "unit_occupied",
         "archived", "lease_overlap", "lease_not_draft", "lease_not_active", "renewal_exists", "unit_has_lease",
-        "guarantor_in_use",
+        "guarantor_in_use", "notice_sequence",
     ];
 
     /// <summary>Rules about who may act, rather than about the data.</summary>
