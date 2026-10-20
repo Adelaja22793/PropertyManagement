@@ -6,6 +6,7 @@ using PropertyManagement.Application.Leases;
 using PropertyManagement.Application.Maintenance;
 using PropertyManagement.Application.Organizations;
 using PropertyManagement.Application.Owners;
+using PropertyManagement.Application.Portal;
 using PropertyManagement.Application.Properties;
 using PropertyManagement.Application.Tenants;
 
@@ -29,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<LeaseReminderService>();
         services.AddScoped<VendorService>();
         services.AddScoped<MaintenanceService>();
+        services.AddScoped<PortalService>();
         return services;
     }
 }

@@ -137,6 +137,8 @@ public class MaintenanceRequest : IOrganizationScoped
     {
         RequireOpen();
         if (!NeedsOwnerApproval) throw new DomainException("This estimate doesn't need the owner's approval.");
+        if (OwnerApprovalRecordedAtUtc is not null)
+            throw new DomainException("The owner's approval of this estimate is already recorded.", "already_decided");
         OwnerApprovalNote = Guard.Required(note, "Owner approval", 500);
         OwnerApprovalRecordedAtUtc = nowUtc;
         Log(MaintenanceUpdateKind.OwnerApproved, OwnerApprovalNote, userId, nowUtc);
