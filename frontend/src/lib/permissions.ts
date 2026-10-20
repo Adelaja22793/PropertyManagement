@@ -30,6 +30,8 @@ export const Permissions = {
   documentsView: 'Documents.View',
   documentsUpload: 'Documents.Upload',
   documentsDelete: 'Documents.Delete',
+  listingsManage: 'Listings.Manage',
+  leadsManage: 'Leads.Manage',
 } as const
 
 /** Roles given only to landlords and tenants through a portal invitation. They have no staff permissions. */

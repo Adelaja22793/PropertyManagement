@@ -107,3 +107,20 @@ export function documentUrl(id: string, download = false): string {
   const organizationId = organizationStore.get() ?? ''
   return `/api/v1/organizations/${organizationId}/documents/${id}/content${download ? '?download=true' : ''}`
 }
+
+/**
+ * Calls to the public site's API (listings and enquiries). They never carry the signed-in user's organization: the
+ * listing's own address decides which company's data is shown.
+ */
+async function publicApi<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+  const headers: Record<string, string> = { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  const response = await fetch(path, { method, headers, credentials: 'omit', body: body === undefined ? undefined : JSON.stringify(body) })
+  if (response.status === 204 || response.status === 202) return undefined as T
+  const data = parseJson(await response.text())
+  if (!response.ok) throw new ApiError(response.status, data?.title ?? `Request failed (${response.status})`, data?.code, normalizeErrors(data?.errors))
+  return data as T
+}
+
+export const publicGet = <T,>(path: string) => publicApi<T>('GET', path)
+export const publicPost = <T,>(path: string, body: unknown) => publicApi<T>('POST', path, body)

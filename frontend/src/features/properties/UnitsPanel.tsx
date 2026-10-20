@@ -20,6 +20,7 @@ export function UnitsPanel({ propertyId, archived }: { propertyId: string; archi
   const canEdit = !archived && can(Permissions.propertiesUpdate)
   const canArchive = !archived && can(Permissions.propertiesArchive)
   const canLet = !archived && can(Permissions.leasesCreate)
+  const canList = !archived && can(Permissions.listingsManage)
   const [showArchived, setShowArchived] = useState(false)
   const [editing, setEditing] = useState<Unit | 'new' | null>(null)
   const units = useQuery({
@@ -89,6 +90,15 @@ export function UnitsPanel({ propertyId, archived }: { propertyId: string; archi
                         className="rounded-md px-3.5 py-2 text-sm font-medium text-brand-700 hover:bg-slate-100"
                       >
                         Let
+                      </Link>
+                    )}
+                    {!u.isArchived && canList && u.occupancyStatus === 'Vacant' && (
+                      <Link
+                        to={`/app/listings/new?propertyId=${propertyId}&unitId=${u.id}`}
+                        aria-label={`Advertise unit ${u.code}`}
+                        className="rounded-md px-3.5 py-2 text-sm font-medium text-brand-700 hover:bg-slate-100"
+                      >
+                        Advertise
                       </Link>
                     )}
                     {!u.isArchived && canEdit && (
