@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using PropertyManagement.Api.Contracts;
+using PropertyManagement.Api.Infrastructure;
 using PropertyManagement.Application.Abstractions;
 using PropertyManagement.Application.Organizations;
 using PropertyManagement.Domain.Auditing;
@@ -24,7 +25,8 @@ public sealed class AuthController(
     MembershipService memberships,
     IAuditLogger audit,
     IEmailSender email,
-    ICurrentUser currentUser) : ControllerBase
+    ICurrentUser currentUser,
+    TwoFactorPolicy twoFactor) : ControllerBase
 {
     [HttpPost("register")]
     [AllowAnonymous]
@@ -68,7 +70,7 @@ public sealed class AuthController(
 
     [HttpPost("login")]
     [AllowAnonymous]
-    public async Task<ActionResult<MeResponse>> Login(LoginRequest request, CancellationToken ct)
+    public async Task<IActionResult> Login(LoginRequest request, CancellationToken ct)
     {
         var user = await users.FindByEmailAsync(request.Email.Trim());
         if (user is null)
@@ -84,6 +86,13 @@ public sealed class AuthController(
                 new { reason = "locked_out" }, userId: user.Id, ct: ct);
             return Problem(statusCode: 423, title: "Too many failed attempts. Try again in 15 minutes or reset your password.");
         }
+        if (result.RequiresTwoFactor)
+        {
+            // Identity has set a short-lived cookie naming this user; the code must come next, from this browser.
+            await audit.RecordNowAsync("user.login", nameof(AppUser), user.Id.ToString(), details: new { step = "password" },
+                userId: user.Id, ct: ct);
+            return Ok(new TwoFactorChallengeResponse(true));
+        }
         if (!result.Succeeded)
         {
             await audit.RecordNowAsync("user.login", nameof(AppUser), user.Id.ToString(), AuditOutcome.Failed,
@@ -94,6 +103,62 @@ public sealed class AuthController(
         await audit.RecordNowAsync("user.login", nameof(AppUser), user.Id.ToString(), userId: user.Id, ct: ct);
         return Ok(await BuildMeAsync(user, ct));
     }
+
+    /// <summary>The second step: a 6-digit code from the authenticator app.</summary>
+    [HttpPost("login/two-factor")]
+    [AllowAnonymous]
+    public async Task<IActionResult> LoginTwoFactor(TwoFactorLoginRequest request, CancellationToken ct)
+    {
+        var user = await signIn.GetTwoFactorAuthenticationUserAsync();
+        if (user is null) return SignInExpired();
+        var result = await signIn.TwoFactorAuthenticatorSignInAsync(CleanCode(request.Code), request.RememberMe, rememberClient: false);
+        return await FinishSecondStepAsync(user, result, "authenticator", ct);
+    }
+
+    /// <summary>The second step with a one-time recovery code, for when the phone is lost.</summary>
+    [HttpPost("login/recovery-code")]
+    [AllowAnonymous]
+    public async Task<IActionResult> LoginRecoveryCode(RecoveryCodeLoginRequest request, CancellationToken ct)
+    {
+        var user = await signIn.GetTwoFactorAuthenticationUserAsync();
+        if (user is null) return SignInExpired();
+        var result = await signIn.TwoFactorRecoveryCodeSignInAsync(request.Code.Replace(" ", "").Trim());
+        if (result.Succeeded)
+        {
+            var left = await users.CountRecoveryCodesAsync(user);
+            await email.SendAsync(user.Email!, "A recovery code was used to sign in",
+                $"Someone signed in to your account with a recovery code. You have {left} left.\n\n" +
+                "If this wasn't you, reset your password and turn two-step sign-in off and on again to get a new authenticator key.", ct);
+        }
+        return await FinishSecondStepAsync(user, result, "recovery_code", ct);
+    }
+
+    private async Task<IActionResult> FinishSecondStepAsync(AppUser user, Microsoft.AspNetCore.Identity.SignInResult result, string method,
+        CancellationToken ct)
+    {
+        if (result.IsLockedOut)
+        {
+            await audit.RecordNowAsync("user.login", nameof(AppUser), user.Id.ToString(), AuditOutcome.Denied,
+                new { reason = "locked_out", method }, userId: user.Id, ct: ct);
+            return Problem(statusCode: 423, title: "Too many failed attempts. Try again in 15 minutes.");
+        }
+        if (!result.Succeeded)
+        {
+            await audit.RecordNowAsync("user.login", nameof(AppUser), user.Id.ToString(), AuditOutcome.Failed,
+                new { reason = "wrong_code", method }, userId: user.Id, ct: ct);
+            return Problem(statusCode: 401, title: method == "authenticator"
+                ? "That code isn't right. Use the latest code from your authenticator app."
+                : "That recovery code isn't right or has already been used.");
+        }
+        await audit.RecordNowAsync("user.login", nameof(AppUser), user.Id.ToString(), details: new { method }, userId: user.Id, ct: ct);
+        return Ok(await BuildMeAsync(user, ct));
+    }
+
+    private ObjectResult SignInExpired() => Problem(statusCode: 401, title: "Your sign-in timed out. Enter your email and password again.",
+        extensions: new Dictionary<string, object?> { ["code"] = "two_factor_expired" });
+
+    /// <summary>Authenticator apps show codes as "123 456".</summary>
+    internal static string CleanCode(string code) => code.Replace(" ", "").Replace("-", "").Trim();
 
     [HttpPost("logout")]
     [Authorize]
@@ -149,7 +214,8 @@ public sealed class AuthController(
     }
 
     private async Task<MeResponse> BuildMeAsync(AppUser user, CancellationToken ct) =>
-        new(user.Id, user.Email!, user.FullName, user.IsPlatformAdmin, await organizations.ListForUserAsync(user.Id, ct));
+        new(user.Id, user.Email!, user.FullName, user.IsPlatformAdmin, await organizations.ListForUserAsync(user.Id, ct),
+            user.TwoFactorEnabled, twoFactor.GraceDays);
 
     private ActionResult ValidationProblem(string message)
     {

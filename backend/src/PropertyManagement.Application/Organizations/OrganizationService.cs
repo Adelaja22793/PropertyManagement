@@ -49,12 +49,14 @@ public sealed class OrganizationService(
             {
                 x.Organization.Id, x.Organization.Name, x.Organization.Slug, x.Organization.Type, x.Organization.Status,
                 Roles = x.Membership.Roles.Select(r => r.RoleName).ToList(),
+                x.Membership.TwoFactorRequiredSinceUtc,
             })
             .OrderBy(x => x.Name)
             .ToListAsync(ct);
 
         return rows.Select(r => new OrganizationSummaryDto(r.Id, r.Name, r.Slug, r.Type, r.Status, r.Roles,
-            Roles.PermissionsFor(r.Roles).Order().ToList())).ToList();
+            Roles.PermissionsFor(r.Roles).Order().ToList(),
+            r.TwoFactorRequiredSinceUtc is { } since ? DateTime.SpecifyKind(since, DateTimeKind.Utc) : null)).ToList();
     }
 
     public async Task<OrganizationDetailDto> GetCurrentAsync(CancellationToken ct)

@@ -28,7 +28,24 @@ public sealed record ResetPasswordRequest(
     [Required, StringLength(128)] string NewPassword);
 
 public sealed record MeResponse(Guid UserId, string Email, string FullName, bool IsPlatformAdmin,
-    IReadOnlyList<OrganizationSummaryDto> Organizations);
+    IReadOnlyList<OrganizationSummaryDto> Organizations, bool TwoFactorEnabled = false, int TwoFactorGraceDays = 0);
+
+/// <summary>The password was right and the account uses two-step sign-in: send the code next.</summary>
+public sealed record TwoFactorChallengeResponse(bool RequiresTwoFactor);
+
+public sealed record TwoFactorLoginRequest([Required, StringLength(20)] string Code, bool RememberMe = false);
+
+public sealed record RecoveryCodeLoginRequest([Required, StringLength(20)] string Code, bool RememberMe = false);
+
+public sealed record TwoFactorStatusResponse(bool Enabled, bool Required, int RecoveryCodesLeft);
+
+public sealed record TwoFactorSetupResponse(string SharedKey, string AuthenticatorUri);
+
+public sealed record TwoFactorCodeRequest([Required, StringLength(20)] string Code);
+
+public sealed record RecoveryCodesResponse(IReadOnlyList<string> RecoveryCodes);
+
+public sealed record DisableTwoFactorRequest([Required] string Password);
 
 public sealed record CreateOrganizationRequest(
     [Required, StringLength(200, MinimumLength = 2)] string Name,

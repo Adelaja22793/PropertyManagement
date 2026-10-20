@@ -11,6 +11,9 @@ public enum MembershipStatus
 /// <summary>Links a login user to an organization, with roles and optional branch scope.</summary>
 public class OrganizationMembership : IOrganizationScoped
 {
+    /// <summary>Roles that must sign in with a second step (design 11.1).</summary>
+    public static readonly IReadOnlySet<string> TwoFactorRoles = new HashSet<string> { "OrganizationAdmin", "Accountant", "FinanceApprover" };
+
     private readonly List<MembershipRole> _roles = [];
     private readonly List<MembershipBranchScope> _branchScopes = [];
 
@@ -32,6 +35,8 @@ public class OrganizationMembership : IOrganizationScoped
     public MembershipStatus Status { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
     public DateTime? RevokedAtUtc { get; private set; }
+    /// <summary>When the member first held a role that needs two-step sign-in; null when none of their roles does.</summary>
+    public DateTime? TwoFactorRequiredSinceUtc { get; private set; }
     public byte[] RowVersion { get; private set; } = [];
 
     public IReadOnlyCollection<MembershipRole> Roles => _roles;
@@ -46,6 +51,9 @@ public class OrganizationMembership : IOrganizationScoped
         _roles.RemoveAll(r => !distinct.Contains(r.RoleName));
         foreach (var role in distinct.Where(r => _roles.All(x => x.RoleName != r)))
             _roles.Add(new MembershipRole(OrganizationId, Id, role));
+        // The grace period to turn on two-step sign-in starts when such a role is first given.
+        if (!distinct.Any(TwoFactorRoles.Contains)) TwoFactorRequiredSinceUtc = null;
+        else TwoFactorRequiredSinceUtc ??= DateTime.UtcNow;
     }
 
     public void SetBranchScope(IEnumerable<Guid> branchIds)
