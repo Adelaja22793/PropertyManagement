@@ -10,6 +10,7 @@ using PropertyManagement.Application.Organizations;
 using PropertyManagement.Application.Owners;
 using PropertyManagement.Application.Portal;
 using PropertyManagement.Application.Properties;
+using PropertyManagement.Application.Reports;
 using PropertyManagement.Application.Tenants;
 
 namespace PropertyManagement.Application;
@@ -36,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<PortalService>();
         services.AddScoped<DocumentService>();
         services.AddScoped<ListingService>();
+        services.AddScoped<ReportService>();
         services.AddScoped<LeadService>();
         services.AddScoped<PublicListingService>();
         return services;

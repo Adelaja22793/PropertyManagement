@@ -33,11 +33,13 @@ const ListingEditorPage = lazy(() => import('./features/listings/ListingEditorPa
 const LeadDetailPage = lazy(() => import('./features/listings/LeadDetailPage').then((m) => ({ default: m.LeadDetailPage })))
 const PublicCompanyPage = lazy(() => import('./features/public/PublicPages').then((m) => ({ default: m.PublicCompanyPage })))
 const PublicListingPage = lazy(() => import('./features/public/PublicPages').then((m) => ({ default: m.PublicListingPage })))
+const ReportsPage = lazy(() => import('./features/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })))
 const VendorsPage = lazy(() => import('./features/maintenance/VendorsPage').then((m) => ({ default: m.VendorsPage })))
 
 const maintenanceAccess = [Permissions.maintenanceView, Permissions.maintenanceUpdateAssigned]
 const vendorAccess = [Permissions.maintenanceView, Permissions.maintenanceManage]
 const listingAccess = [Permissions.listingsManage, Permissions.leadsManage]
+const reportAccess = [Permissions.propertiesView, Permissions.leasesView, Permissions.maintenanceView, Permissions.leadsManage, Permissions.auditView]
 
 export function App() {
   return (
@@ -71,6 +73,7 @@ export function App() {
         <Route path="listings/:id" element={<RequirePermission permission={listingAccess}><ListingDetailPage /></RequirePermission>} />
         <Route path="listings/:id/edit" element={<RequirePermission permission={Permissions.listingsManage}><ListingEditorPage /></RequirePermission>} />
         <Route path="leads/:id" element={<RequirePermission permission={Permissions.leadsManage}><LeadDetailPage /></RequirePermission>} />
+        <Route path="reports" element={<RequirePermission permission={reportAccess}><ReportsPage /></RequirePermission>} />
         <Route path="portal" element={<PortalHome />} />
         <Route path="branches" element={<RequirePermission permission={Permissions.branchesView}><BranchesPage /></RequirePermission>} />
         <Route path="team" element={<RequirePermission permission={Permissions.usersView}><TeamPage /></RequirePermission>} />

@@ -913,3 +913,31 @@ export interface PublicListing {
   contactName: string | null
   contactPhone: string | null
 }
+
+// Phase 9: reports.
+
+export type ColumnKind = 'Text' | 'Number' | 'Money' | 'Percent' | 'Date' | 'DateTime'
+export type ReportCell = string | number | null
+
+export interface ReportDefinition {
+  key: string
+  title: string
+  description: string
+  usesDates: boolean
+  usesProperty: boolean
+  usesBranch: boolean
+}
+
+export interface ReportTable {
+  key: string
+  title: string
+  description: string
+  from: string | null
+  to: string | null
+  facts: { label: string; value: string }[]
+  columns: { key: string; label: string; kind: ColumnKind }[]
+  rows: ReportCell[][]
+  totals: ReportCell[] | null
+  truncated: boolean
+  generatedAtUtc: string
+}

@@ -124,3 +124,24 @@ async function publicApi<T>(method: 'GET' | 'POST', path: string, body?: unknown
 
 export const publicGet = <T,>(path: string) => publicApi<T>('GET', path)
 export const publicPost = <T,>(path: string, body: unknown) => publicApi<T>('POST', path, body)
+
+/** Downloads a file from the API (with the organization header) and hands it to the browser to save. */
+export async function downloadFile(path: string, fallbackName: string): Promise<void> {
+  const headers: Record<string, string> = { 'X-Requested-With': 'XMLHttpRequest' }
+  const organizationId = organizationStore.get()
+  if (organizationId) headers['X-Organization-Id'] = organizationId
+  const response = await fetch(path, { headers, credentials: 'same-origin' })
+  if (!response.ok) {
+    const data = parseJson(await response.text())
+    throw new ApiError(response.status, data?.title ?? `Download failed (${response.status})`, data?.code, normalizeErrors(data?.errors))
+  }
+  const name = /filename="?([^";]+)"?/.exec(response.headers.get('Content-Disposition') ?? '')?.[1] ?? fallbackName
+  const url = URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = name
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
