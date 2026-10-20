@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PropertyManagement.Application.Abstractions;
 using PropertyManagement.Application.Auditing;
 using PropertyManagement.Application.Branches;
+using PropertyManagement.Application.Documents;
 using PropertyManagement.Application.Leases;
 using PropertyManagement.Application.Maintenance;
 using PropertyManagement.Application.Organizations;
@@ -30,7 +31,9 @@ public static class DependencyInjection
         services.AddScoped<LeaseReminderService>();
         services.AddScoped<VendorService>();
         services.AddScoped<MaintenanceService>();
+        services.AddScoped<PortalScope>();
         services.AddScoped<PortalService>();
+        services.AddScoped<DocumentService>();
         return services;
     }
 }

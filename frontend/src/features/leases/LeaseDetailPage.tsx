@@ -14,6 +14,7 @@ import { Badge, Button, Card, DetailList, ErrorBox, PageHeader, TextAreaField, T
 import { StageBadge } from './LeaseList'
 import { NoticesPanel } from './NoticesPanel'
 import { InspectionsPanel } from './InspectionsPanel'
+import { DocumentsPanel } from '../documents/DocumentsPanel'
 import { defaultEndDate, expiryText, moveInTotal, nextDay, rentChangePercent } from './leaseMath'
 
 type Panel = 'renew' | 'end' | 'cancel' | null
@@ -173,6 +174,9 @@ function LeaseDetailView({ id }: { id: string }) {
 
         {l.status !== 'Draft' && l.status !== 'Cancelled' && <NoticesPanel leaseId={l.id} canServe={active} />}
         {l.status !== 'Cancelled' && l.status !== 'Renewed' && <InspectionsPanel leaseId={l.id} status={l.status} />}
+        {can(Permissions.documentsView) && (
+          <DocumentsPanel subject="Lease" subjectId={l.id} title="Documents and inspection photos" defaultCategory="Agreement" />
+        )}
 
         <Card title="Charges">
           <table className="w-full text-left text-sm">

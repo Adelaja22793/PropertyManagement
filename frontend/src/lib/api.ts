@@ -49,13 +49,14 @@ export async function api<T>(method: Method, path: string, body?: unknown): Prom
   }
   const organizationId = organizationStore.get()
   if (organizationId) headers['X-Organization-Id'] = organizationId
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  const isForm = body instanceof FormData
+  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
 
   const response = await fetch(path, {
     method,
     headers,
     credentials: 'same-origin',
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
   })
 
   if (response.status === 204 || response.status === 202) return undefined as T
@@ -95,3 +96,14 @@ export const post = <T,>(path: string, body?: unknown) => api<T>('POST', path, b
 export const put = <T,>(path: string, body: unknown) => api<T>('PUT', path, body)
 export const patch = <T,>(path: string, body: unknown) => api<T>('PATCH', path, body)
 export const del = <T,>(path: string) => api<T>('DELETE', path)
+/** Sends a file upload (multipart form). The browser sets the content type and boundary. */
+export const upload = <T,>(path: string, form: FormData) => api<T>('POST', path, form)
+
+/**
+ * The address of a stored document. The organization is part of the path, so the link works in an image or a new
+ * tab; the server checks the signed-in user's access on every request.
+ */
+export function documentUrl(id: string, download = false): string {
+  const organizationId = organizationStore.get() ?? ''
+  return `/api/v1/organizations/${organizationId}/documents/${id}/content${download ? '?download=true' : ''}`
+}

@@ -11,6 +11,7 @@ import { blankToNull, numberOrNull, optionalAmount, optionalText, requiredAmount
 import { Button, Card, DetailList, ErrorBox, PageHeader, SelectField, TextAreaField, TextField } from '../../components/ui'
 import { StatusBadge, UrgencyBadge } from './MaintenanceList'
 import { MaintenanceForm } from './MaintenanceForm'
+import { DocumentsPanel } from '../documents/DocumentsPanel'
 
 type Panel = 'edit' | 'estimate' | 'owner' | 'assign' | 'parts' | 'complete' | 'reject' | 'cancel' | 'feedback' | null
 
@@ -121,6 +122,7 @@ function MaintenanceDetailView({ id }: { id: string }) {
             <p className="mt-4 text-xs text-slate-500">The cost is recorded here. Charging it to the owner as an expense arrives with the finance work.</p>
           )}
         </Card>
+        <DocumentsPanel subject="Maintenance" subjectId={r.id} title="Photos and attachments" defaultCategory="Photo" />
         <Timeline
           request={r}
           canComment={manage || work}

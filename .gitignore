@@ -7,3 +7,4 @@ playwright-report/
 *.swp
 .env
 .env.*
+App_Data/

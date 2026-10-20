@@ -92,7 +92,7 @@ test('a tenant reports a repair and the owner approves the estimate in their por
   // Staff can now approve the work, and the tenant sees the progress.
   await page.goto(`/app/maintenance/${requestId}`)
   await page.getByRole('button', { name: 'Approve work' }).click()
-  await expect(page.getByText('Approved', { exact: true })).toBeVisible()
+  await expect(page.getByText('Approved', { exact: true }).first()).toBeVisible()
   // The tenant is still on the request; reloading shows the new step.
   await tenantPage.reload()
   await expect(tenantPage.getByText('Approved', { exact: true }).first()).toBeVisible()

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using PropertyManagement.Application.Abstractions;
 using PropertyManagement.Application.Common;
 using PropertyManagement.Domain.Auditing;
+using PropertyManagement.Domain.Documents;
 using PropertyManagement.Domain.Common;
 using PropertyManagement.Domain.Leases;
 using PropertyManagement.Domain.Maintenance;
@@ -49,6 +50,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentOrgani
     public DbSet<LeaseReminder> LeaseReminders => Set<LeaseReminder>();
     public DbSet<Vendor> Vendors => Set<Vendor>();
     public DbSet<MaintenanceRequest> MaintenanceRequests => Set<MaintenanceRequest>();
+    public DbSet<Document> Documents => Set<Document>();
     public DbSet<MaintenanceUpdate> MaintenanceUpdates => Set<MaintenanceUpdate>();
 
     /// <summary>Data Protection keys used to encrypt identity numbers. Shared by all API instances.</summary>

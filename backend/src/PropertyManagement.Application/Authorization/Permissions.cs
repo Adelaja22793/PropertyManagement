@@ -79,6 +79,13 @@ public static class Permissions
         public const string UpdateAssigned = "Maintenance.UpdateAssigned";
     }
 
+    public static class Documents
+    {
+        public const string View = "Documents.View";
+        public const string Upload = "Documents.Upload";
+        public const string Delete = "Documents.Delete";
+    }
+
     public static class Listings
     {
         public const string Manage = "Listings.Manage";

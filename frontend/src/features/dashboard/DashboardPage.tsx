@@ -5,11 +5,12 @@ import type { Branch, Member, Paged } from '../../lib/types'
 import { useSession } from '../../app/session'
 import { Permissions, roleLabel } from '../../lib/permissions'
 import { Card, PageHeader } from '../../components/ui'
+import { ExpiringDocuments } from '../documents/ExpiringDocuments'
 
 const comingNext = [
   { phase: 'Phase 4', items: 'Rent invoices, payments, receipts and bank matching, once the finance design is signed off' },
   { phase: 'Phase 5', items: 'Owner statements, payouts and expenses (maintenance is live)' },
-  { phase: 'Phase 6', items: 'Owner and tenant portals, service charges and reports' },
+  { phase: 'Phase 6', items: 'Service charges, listings and reports (owner and tenant portals and documents are live)' },
 ]
 
 export function DashboardPage() {
@@ -74,6 +75,11 @@ export function DashboardPage() {
           </Card>
         )}
       </div>
+      {can(Permissions.documentsView) && (
+        <div className="mt-6">
+          <ExpiringDocuments />
+        </div>
+      )}
       <div className="mt-6">
         <Card title="Coming next">
           <ul className="divide-y divide-slate-100">

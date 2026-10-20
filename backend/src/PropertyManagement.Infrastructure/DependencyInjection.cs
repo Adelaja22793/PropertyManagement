@@ -27,6 +27,8 @@ public static class DependencyInjection
         services.AddScoped<IUserDirectory>(sp => sp.GetRequiredService<UserDirectory>());
         services.AddScoped<IUserLookup>(sp => sp.GetRequiredService<UserDirectory>());
         services.AddSingleton<IEmailSender, LoggingEmailSender>();
+        services.AddSingleton<IFileStore, LocalFileStore>();
+        services.AddSingleton<IMalwareScanner, ConfiguredMalwareScanner>();
 
         // Keys live in the database so every API instance can read what another encrypted. In production also
         // protect the keys at rest (for example ProtectKeysWithAzureKeyVault); see README.

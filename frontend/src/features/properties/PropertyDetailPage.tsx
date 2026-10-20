@@ -11,6 +11,7 @@ import { Badge, Button, Card, DetailList, ErrorBox, PageHeader } from '../../com
 import { PropertyForm } from './PropertyForm'
 import { UnitsPanel } from './UnitsPanel'
 import { OwnershipPanel } from './OwnershipPanel'
+import { DocumentsPanel } from '../documents/DocumentsPanel'
 import { LeasesPanel } from '../leases/LeasesPage'
 import { MaintenancePanel } from '../maintenance/MaintenancePage'
 
@@ -96,6 +97,9 @@ export function PropertyDetailPage() {
         )}
         {can(Permissions.maintenanceView) && <MaintenancePanel propertyId={p.id} archived={archived} />}
         <OwnershipPanel propertyId={p.id} archived={archived} />
+        {can(Permissions.documentsView) && (
+          <DocumentsPanel subject="Property" subjectId={p.id} title="Documents and photos" readOnly={archived} />
+        )}
       </div>
     </>
   )

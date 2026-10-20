@@ -22,7 +22,8 @@ public sealed class PortalService(
     IUserDirectory users,
     IEmailSender email,
     IAuditLogger audit,
-    IClock clock)
+    IClock clock,
+    PortalScope scope)
 {
     // Owner portal
 
@@ -183,46 +184,17 @@ public sealed class PortalService(
 
     // Shared
 
-    private async Task<List<Guid>> OwnerIdsAsync(CancellationToken ct)
-    {
-        RequireRole(Roles.Owner);
-        var userId = currentUser.RequireUserId();
-        var ids = await db.OwnerUserLinks.Where(l => l.UserId == userId).Select(l => l.OwnerId).ToListAsync(ct);
-        return ids.Count > 0 ? ids : throw new ForbiddenException("Your login isn't linked to an owner record. Ask your property manager.");
-    }
+    private Task<List<Guid>> OwnerIdsAsync(CancellationToken ct) => scope.OwnerIdsAsync(ct);
 
-    private async Task<List<Guid>> TenantIdsAsync(CancellationToken ct)
-    {
-        RequireRole(Roles.Tenant);
-        var userId = currentUser.RequireUserId();
-        var ids = await db.TenantUserLinks.Where(l => l.UserId == userId).Select(l => l.TenantId).ToListAsync(ct);
-        return ids.Count > 0 ? ids : throw new ForbiddenException("Your login isn't linked to a tenant record. Ask your property manager.");
-    }
+    private Task<List<Guid>> TenantIdsAsync(CancellationToken ct) => scope.TenantIdsAsync(ct);
 
-    private void RequireRole(string role)
-    {
-        if (!currentOrganization.Roles.Contains(role)) throw new ForbiddenException("This portal isn't available to you.");
-    }
+    private async Task<List<Guid>> OwnerPropertyIdsAsync(CancellationToken ct) => await scope.OwnerPropertyIdsAsync(await OwnerIdsAsync(ct), ct);
 
-    private async Task<List<Guid>> OwnerPropertyIdsAsync(CancellationToken ct)
-    {
-        var ownerIds = await OwnerIdsAsync(ct);
-        var today = clock.TodayInNigeria();
-        return await db.PropertyOwnerships
-            .Where(o => ownerIds.Contains(o.OwnerId) && o.EffectiveFrom <= today && (o.EffectiveTo == null || o.EffectiveTo >= today))
-            .Select(o => o.PropertyId).Distinct().ToListAsync(ct);
-    }
+    private IQueryable<MaintenanceRequest> OwnerRequests(List<Guid> propertyIds) => scope.OwnerRequests(propertyIds);
 
-    private IQueryable<MaintenanceRequest> OwnerRequests(List<Guid> propertyIds) =>
-        db.MaintenanceRequests.Where(r => propertyIds.Contains(r.PropertyId));
+    private IQueryable<MaintenanceRequest> TenantRequests(List<Guid> tenantIds) => scope.TenantRequests(tenantIds);
 
-    private IQueryable<MaintenanceRequest> TenantRequests(List<Guid> tenantIds) =>
-        db.MaintenanceRequests.Where(r => r.TenantId != null && tenantIds.Contains(r.TenantId.Value));
-
-    /// <summary>Leases the tenant is party to, leaving out drafts and cancelled drafts that never took effect.</summary>
-    private IQueryable<Lease> TenantLeases(List<Guid> tenantIds) =>
-        db.Leases.Where(l => l.Status != LeaseStatus.Draft && l.Status != LeaseStatus.Cancelled
-                             && db.LeaseTenants.Any(t => t.LeaseId == l.Id && tenantIds.Contains(t.TenantId)));
+    private IQueryable<Lease> TenantLeases(List<Guid> tenantIds) => scope.TenantLeases(tenantIds);
 
     private async Task<MaintenanceRequest> LoadOwnerRequestAsync(Guid id, CancellationToken ct) =>
         await OwnerRequests(await OwnerPropertyIdsAsync(ct)).Include(r => r.Updates).SingleOrDefaultAsync(r => r.Id == id, ct)
