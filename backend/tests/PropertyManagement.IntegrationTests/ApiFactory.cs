@@ -41,6 +41,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["ConnectionStrings:Default"] = ConnectionString,
             ["Database:MigrateOnStartup"] = "true",
             ["RateLimiting:AuthPermitPerMinute"] = "10000",
+            ["RateLimiting:PublicPermitPerMinute"] = "10000",
+            ["RateLimiting:EnquiryPermitPerMinute"] = "10000",
             // Tests run the lease schedule themselves, so it never races a test's own changes.
             ["Jobs:Leases:Enabled"] = "false",
             ["Storage:LocalPath"] = _files,

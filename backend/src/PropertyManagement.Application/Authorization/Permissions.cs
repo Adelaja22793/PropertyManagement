@@ -89,6 +89,8 @@ public static class Permissions
     public static class Listings
     {
         public const string Manage = "Listings.Manage";
+        /// <summary>Enquiries and viewings.</summary>
+        public const string Leads = "Leads.Manage";
     }
 
     /// <summary>Every permission code defined above.</summary>

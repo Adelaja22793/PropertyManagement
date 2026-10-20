@@ -97,6 +97,8 @@ public sealed partial class LeaseService(
         audit.Record("lease.activated", nameof(Lease), lease.Id.ToString(),
             details: new { lease.Reference, Renews = previous?.Reference });
         await RefreshUnitsAsync([lease.UnitId], [lease, .. previous is null ? Array.Empty<Lease>() : [previous]], ct);
+        // A let unit is no longer advertised; a renewal keeps the same tenant in, so there is nothing to close.
+        if (previous is null) await Listings.ListingService.CloseForLetUnitAsync(db, lease.UnitId, clock.UtcNow, ct);
         await db.SaveChangesAsync(ct);
         return await ToDetailAsync(lease, ct);
     }
