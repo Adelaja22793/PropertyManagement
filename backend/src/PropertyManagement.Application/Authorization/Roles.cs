@@ -23,6 +23,7 @@ public static class Roles
         [
             Permissions.Organization.View, Permissions.Branches.View, Permissions.Users.View,
             Permissions.Properties.View, Permissions.Properties.Create, Permissions.Properties.Update, Permissions.Properties.Archive,
+            Permissions.Owners.View, Permissions.Owners.Manage,
             Permissions.Tenants.View, Permissions.Tenants.Create, Permissions.Tenants.Update,
             Permissions.Leases.View, Permissions.Leases.Create, Permissions.Leases.Renew, Permissions.Leases.Terminate, Permissions.Leases.IssueNotice,
             Permissions.Maintenance.View, Permissions.Maintenance.Manage, Permissions.Listings.Manage,
@@ -31,7 +32,7 @@ public static class Roles
         [PropertyManager] =
         [
             Permissions.Organization.View, Permissions.Branches.View,
-            Permissions.Properties.View, Permissions.Properties.Update,
+            Permissions.Properties.View, Permissions.Properties.Update, Permissions.Owners.View,
             Permissions.Tenants.View, Permissions.Tenants.Create, Permissions.Tenants.Update,
             Permissions.Leases.View, Permissions.Leases.Create, Permissions.Leases.Renew, Permissions.Leases.IssueNotice,
             Permissions.Maintenance.View, Permissions.Maintenance.Manage,
@@ -41,6 +42,7 @@ public static class Roles
         [
             Permissions.Organization.View, Permissions.Branches.View,
             Permissions.Properties.View, Permissions.Tenants.View, Permissions.Leases.View,
+            Permissions.Owners.View, Permissions.Owners.Manage,
             Permissions.Finance.InvoicesView, Permissions.Finance.InvoicesManage,
             Permissions.Finance.PaymentsView, Permissions.Finance.PaymentsRecord,
             Permissions.Finance.PayoutsCreate, Permissions.Finance.ReportsView,
@@ -48,17 +50,18 @@ public static class Roles
         [FinanceApprover] =
         [
             Permissions.Organization.View, Permissions.Branches.View,
+            Permissions.Owners.View, Permissions.Owners.ApproveBankAccounts,
             Permissions.Finance.InvoicesView, Permissions.Finance.PaymentsView,
             Permissions.Finance.PayoutsApprove, Permissions.Finance.ReportsView, Permissions.Audit.View,
         ],
         [Agent] = [Permissions.Organization.View, Permissions.Properties.View, Permissions.Listings.Manage],
         [MaintenanceStaff] = [Permissions.Organization.View, Permissions.Maintenance.UpdateAssigned],
-        // Portal roles see only their own records through owner/tenant links (Phase 3), never staff screens.
+        // Portal roles see only their own records through owner/tenant links, never staff screens.
         [Owner] = [],
         [Tenant] = [],
     };
 
-    /// <summary>Roles that staff can be invited into in Phase 1. Portal roles need owner/tenant links first.</summary>
+    /// <summary>Roles staff can be invited into. Portal roles come only from an owner or tenant portal invitation.</summary>
     public static readonly IReadOnlySet<string> StaffRoles = new HashSet<string>
     {
         OrganizationAdmin, BranchManager, PropertyManager, Accountant, FinanceApprover, Agent, MaintenanceStaff,
@@ -69,6 +72,9 @@ public static class Roles
     {
         OrganizationAdmin, Accountant, FinanceApprover,
     };
+
+    /// <summary>Roles that see only the properties assigned to them, unless another role gives wider access.</summary>
+    public static readonly IReadOnlySet<string> AssignedPropertyRoles = new HashSet<string> { PropertyManager };
 
     public static bool Exists(string role) => RolePermissions.ContainsKey(role);
 

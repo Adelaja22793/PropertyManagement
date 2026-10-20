@@ -15,8 +15,10 @@ public class UserInvitation : IOrganizationScoped
     private UserInvitation() { }
 
     public UserInvitation(Guid organizationId, string email, string roleName, IEnumerable<Guid> branchIds,
-        string tokenHash, Guid invitedByUserId, TimeSpan validFor)
+        string tokenHash, Guid invitedByUserId, TimeSpan validFor, Guid? ownerId = null, Guid? tenantId = null)
     {
+        if (ownerId is not null && tenantId is not null)
+            throw new DomainException("A portal invitation is for an owner or a tenant, not both.");
         Id = Guid.NewGuid();
         OrganizationId = organizationId;
         Email = email.Trim().ToLowerInvariant();
@@ -27,6 +29,8 @@ public class UserInvitation : IOrganizationScoped
         Status = InvitationStatus.Pending;
         CreatedAtUtc = DateTime.UtcNow;
         ExpiresAtUtc = CreatedAtUtc.Add(validFor);
+        OwnerId = ownerId;
+        TenantId = tenantId;
     }
 
     public Guid Id { get; private set; }
@@ -42,6 +46,12 @@ public class UserInvitation : IOrganizationScoped
     public DateTime ExpiresAtUtc { get; private set; }
     public DateTime? AcceptedAtUtc { get; private set; }
     public Guid? AcceptedByUserId { get; private set; }
+    /// <summary>For an owner portal invitation, the owner record the new login is linked to.</summary>
+    public Guid? OwnerId { get; private set; }
+    /// <summary>For a tenant portal invitation, the tenant record the new login is linked to.</summary>
+    public Guid? TenantId { get; private set; }
+
+    public bool IsPortalInvitation => OwnerId is not null || TenantId is not null;
 
     public IEnumerable<Guid> GetBranchIds() =>
         BranchIds.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(Guid.Parse);
