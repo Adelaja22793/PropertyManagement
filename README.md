@@ -3,7 +3,7 @@
 A multi-company property management platform for Nigerian property managers and landlords.
 It follows the design in *Property Management System: Requirements & Technical Design v1.1*.
 
-**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) Phase 3 (properties, units, owners and tenants) the first part of Phase 4 (leases) the first part of Phase 5 (maintenance and vendors) and the owner and tenant portals. No money features yet: invoices, payments and payouts wait for the accountant and tax adviser to sign off the [finance design](https://claude.ai/code/artifact/59369177-0d67-4085-a6e6-054ed378947e).**
+**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) Phase 3 (properties, units, owners and tenants) the first part of Phase 4 (leases) the first part of Phase 5 (maintenance and vendors), the owner and tenant portals, and documents and photos. No money features yet: invoices, payments and payouts wait for the accountant and tax adviser to sign off the [finance design](https://claude.ai/code/artifact/59369177-0d67-4085-a6e6-054ed378947e).**
 
 ## What works today
 
@@ -29,6 +29,14 @@ It follows the design in *Property Management System: Requirements & Technical D
 - **Identity details (KYC).** NIN or other ID and BVN are encrypted with ASP.NET Core Data Protection before they are stored. Everyone with `Tenants.View` sees only the ID type and last four digits; the full numbers need `Tenants.ViewKyc`, and every reveal is audited. Numbers never go in the audit log.
 - **Guarantors** and **screening checks** (employer, previous landlord, references) recorded against the tenant, with who checked and the outcome.
 - **Portal invitations** for owners and tenants. Accepting links the login to that owner or tenant record. Portal users have no staff permissions and are not listed as team members.
+
+### Documents and photos
+
+- **Filed against a record**: a property, owner, tenant, lease or repair, with a type (photo, agreement, identity, insurance, permit and so on) and an optional expiry date. Staff see a record's files only if they can see the record and hold `Documents.View`; deleting needs `Documents.Delete`. Identity documents also need `Tenants.ViewKyc`, and every view of one is audited. The person assigned to a repair can see and add its photos.
+- **Checked before storing.** Files are up to 10 MB and must be PDF, JPEG, PNG, WebP, Word (.docx) or Excel (.xlsx), recognised from the file's own bytes, so a web page renamed to .pdf is refused. Every file is virus-scanned with ClamAV when `Storage:ClamAv:Host` is set; without it only the EICAR test file is caught (fine for development, not for production). If the scanner can't be reached the upload is refused.
+- **Private downloads.** Files are stored outside the web root under keys made from ids, and served only through `/api/v1/organizations/{organizationId}/documents/{id}/content`, which checks the signed-in user's access on every request and sends headers that stop the browser running anything in the file.
+- **Shared with portals** when staff tick "share with the owner" or "share with the tenant". Owners see shared files on themselves and on their properties, leases and repairs; tenants see shared files on themselves, their leases and their repairs. Tenants can add photos to their own open repair requests, which staff and the owner then see.
+- **Expiry tracking.** The dashboard lists documents that have expired or expire within 60 days.
 
 ### Owner and tenant portals
 
@@ -100,12 +108,14 @@ npm install
 npm run dev                                # http://localhost:5173 (forwards /api to :5092)
 ```
 
+Uploaded files go to `App_Data/documents` next to the API build unless `Storage:LocalPath` says otherwise.
+
 Emails (invitations, password resets) are only logged in development. The person who sends an invitation gets a link to share.
 
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 66 unit + 84 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd backend && dotnet test        # 73 unit + 88 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
 cd frontend && npm test          # 31 component and client tests
 cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running)
 ```
@@ -176,6 +186,12 @@ Each integration test class creates its own database and drops it afterwards.
 | POST | /api/v1/portal/owner/maintenance/{id}/approve, /decline | Owner's decision on an estimate above their limit |
 | GET | /api/v1/portal/tenant, /maintenance, /maintenance/{id} | Tenant's leases and repairs (Tenant role) |
 | POST | /api/v1/portal/tenant/maintenance, /maintenance/{id}/comments | Report a repair; add details |
+| GET, POST | /api/v1/documents | A record's files (`subject`, `subjectId`); upload (multipart form) |
+| PUT, DELETE | /api/v1/documents/{id} | Change title, type, expiry or sharing; delete |
+| GET | /api/v1/documents/expiring | Expired or expiring within `days` (default 60) |
+| GET | /api/v1/organizations/{organizationId}/documents/{id}/content | Download (`download=true` for an attachment); staff and portal users |
+| GET | /api/v1/portal/owner/documents, /api/v1/portal/tenant/documents | Files shared with the owner or tenant |
+| POST | /api/v1/portal/tenant/maintenance/{id}/photos | A tenant adds a photo to their open repair |
 | GET, POST | /api/v1/vendors | Search; create |
 | GET, PUT | /api/v1/vendors/{id} | |
 | PUT | /api/v1/vendors/{id}/active | Deactivate or reactivate |
@@ -194,11 +210,12 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 - The audit table is append-only in code; also deny UPDATE and DELETE to the app's database login.
 - Data Protection keys (which encrypt identity numbers and sign-in cookies) are stored in the `DataProtectionKeys` table. In production also encrypt the keys themselves, for example with `ProtectKeysWithAzureKeyVault` or a certificate, so a database copy alone can't decrypt NIN or BVN.
 - Invoices, payments, receipts, deposits held and owner payouts (rest of Phase 4) wait for the finance design sign-off.
-- Generating notice and tenancy agreement documents from lawyer-approved templates, and inspection and repair photos (both need file storage).
+- Generating notice and tenancy agreement documents from lawyer-approved templates (file storage is now in place; the templates need a lawyer).
 - Repair costs posted as expenses against the owner or service charge, vendor invoices and payments (wait for the finance sign-off).
 - SMS alerts for emergency repairs.
 - Reminders to tenants themselves (by SMS or the tenant portal), and notice periods set per organization or state rather than the Lagos defaults.
 - Shared occupancy of one unit by several separate leases.
 - Two people activating overlapping leases at the very same moment could both succeed; add a database lock or check if that becomes a real risk.
-- Money in the portals (owner statements and payouts, tenant invoices, receipts and online payment), and documents and SMS for portal users.
-- Documents and photos for properties, owners and tenants (needs file storage with virus scanning, design 3.5).
+- Money in the portals (owner statements and payouts, tenant invoices, receipts and online payment), and SMS for portal users.
+- Run a ClamAV daemon in production and set `Storage:ClamAv:Host`; without it uploads are only checked for the EICAR test file.
+- Files are kept on one disk (`Storage:LocalPath`). With more than one API server, use a shared volume or move to cloud storage with short-lived signed links (design 6.13), and back the files up with the database.

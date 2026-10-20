@@ -11,6 +11,7 @@ import { TenantForm } from './TenantForm'
 import { KycPanel } from './KycPanel'
 import { GuarantorsPanel } from './GuarantorsPanel'
 import { ScreeningPanel } from './ScreeningPanel'
+import { DocumentsPanel } from '../documents/DocumentsPanel'
 import { LeasesPanel } from '../leases/LeasesPage'
 
 export function TenantDetailPage() {
@@ -83,6 +84,7 @@ export function TenantDetailPage() {
         <KycPanel tenantId={t.id} kyc={t.kyc} />
         <GuarantorsPanel tenantId={t.id} />
         <ScreeningPanel tenantId={t.id} />
+        {can(Permissions.documentsView) && <DocumentsPanel subject="Tenant" subjectId={t.id} />}
         {canUpdate && !t.hasPortalAccess && (
           <Card title="Tenant portal">
             <PortalInvite path={`/api/v1/tenants/${t.id}/portal-invite`} invalidate={['tenants', t.id]} name={t.name} />

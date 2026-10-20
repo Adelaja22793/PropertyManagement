@@ -6,6 +6,7 @@ import { statusTone } from '../../lib/tones'
 import { Badge, Card, Empty, ErrorBox } from '../../components/ui'
 import { MessageForm, RequestDetail, RequestList } from './PortalRequests'
 import { useOpenRequest } from './useOpenRequest'
+import { PortalDocumentsCard, RequestFiles } from './PortalDocuments'
 
 /** What a landlord sees: their properties and who is in each unit, and repairs, with approvals to give. */
 export function OwnerPortal() {
@@ -19,33 +20,36 @@ export function OwnerPortal() {
   if (open) {
     return (
       <RequestDetail path={`/api/v1/portal/owner/maintenance/${open}`} onBack={() => setOpen(null)}>
-        {(r, refresh) =>
-          r.awaitingOwnerApproval && (
-            <Card title="Your approval is needed">
-              <p className="mb-4 text-sm text-slate-700">
-                The estimate of {formatNaira(r.estimateAmount)} is above your repair approval limit of {formatNaira(r.approvalLimit)}. The work goes
-                ahead once you approve it.
-              </p>
-              <div className="grid gap-6 sm:grid-cols-2">
-                <MessageForm
-                  label="Note (optional)"
-                  button="Approve estimate"
-                  required={false}
-                  path={`/api/v1/portal/owner/maintenance/${r.id}/approve`}
-                  body={(note) => ({ note: note || null })}
-                  onSaved={refresh}
-                />
-                <MessageForm
-                  label="Why you don't approve"
-                  button="Decline"
-                  path={`/api/v1/portal/owner/maintenance/${r.id}/decline`}
-                  body={(reason) => ({ reason })}
-                  onSaved={refresh}
-                />
-              </div>
-            </Card>
-          )
-        }
+        {(r, refresh) => (
+          <>
+            {r.awaitingOwnerApproval && (
+              <Card title="Your approval is needed">
+                <p className="mb-4 text-sm text-slate-700">
+                  The estimate of {formatNaira(r.estimateAmount)} is above your repair approval limit of {formatNaira(r.approvalLimit)}. The work goes
+                  ahead once you approve it.
+                </p>
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <MessageForm
+                    label="Note (optional)"
+                    button="Approve estimate"
+                    required={false}
+                    path={`/api/v1/portal/owner/maintenance/${r.id}/approve`}
+                    body={(note) => ({ note: note || null })}
+                    onSaved={refresh}
+                  />
+                  <MessageForm
+                    label="Why you don't approve"
+                    button="Decline"
+                    path={`/api/v1/portal/owner/maintenance/${r.id}/decline`}
+                    body={(reason) => ({ reason })}
+                    onSaved={refresh}
+                  />
+                </div>
+              </Card>
+            )}
+            <RequestFiles role="owner" requestId={r.id} canAddPhotos={false} />
+          </>
+        )}
       </RequestDetail>
     )
   }
@@ -107,6 +111,7 @@ export function OwnerPortal() {
           <RequestList items={requests.data} onOpen={setOpen} empty="No repairs reported." />
         </Card>
       )}
+      <PortalDocumentsCard role="owner" />
       <p className="text-xs text-slate-500">Statements and payouts will appear here once rent collection is live.</p>
     </div>
   )

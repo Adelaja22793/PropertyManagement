@@ -11,6 +11,7 @@ import { PortalInvite } from '../../components/PortalInvite'
 import { OwnerForm } from './OwnerForm'
 import { BankAccountsPanel } from './BankAccountsPanel'
 import { AgreementsPanel } from './AgreementsPanel'
+import { DocumentsPanel } from '../documents/DocumentsPanel'
 
 export function OwnerDetailPage() {
   const { id = '' } = useParams()
@@ -91,6 +92,7 @@ export function OwnerDetailPage() {
 
         <BankAccountsPanel ownerId={o.id} />
         <AgreementsPanel ownerId={o.id} properties={o.properties} />
+        {can(Permissions.documentsView) && <DocumentsPanel subject="Owner" subjectId={o.id} defaultCategory="Agreement" />}
 
         {canManage && !o.hasPortalAccess && (
           <Card title="Owner portal">

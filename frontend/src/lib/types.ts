@@ -677,3 +677,70 @@ export interface PortalRequestDetail {
   createdAtUtc: string
   updates: { kind: MaintenanceUpdateKind; text: string | null; status: MaintenanceStatus; byYou: boolean; atUtc: string }[]
 }
+
+export type DocumentSubject = 'Property' | 'Owner' | 'Tenant' | 'Lease' | 'Maintenance'
+export const DocumentCategories = [
+  'Photo',
+  'Agreement',
+  'Identity',
+  'Insurance',
+  'Permit',
+  'Certificate',
+  'Inspection',
+  'Quote',
+  'Receipt',
+  'Notice',
+  'Correspondence',
+  'Other',
+] as const
+export type DocumentCategory = (typeof DocumentCategories)[number]
+
+export interface DocumentItem {
+  id: string
+  subject: DocumentSubject
+  subjectId: string
+  category: DocumentCategory
+  title: string
+  fileName: string
+  contentType: string
+  sizeBytes: number
+  expiresOn: string | null
+  sharedWithOwner: boolean
+  sharedWithTenant: boolean
+  source: 'Staff' | 'OwnerPortal' | 'TenantPortal'
+  uploadedBy: string | null
+  createdAtUtc: string
+}
+
+export interface DocumentList {
+  items: DocumentItem[]
+  canUpload: boolean
+  canEdit: boolean
+  canDelete: boolean
+  canViewIdentity: boolean
+}
+
+export interface ExpiringDocument {
+  id: string
+  title: string
+  category: DocumentCategory
+  expiresOn: string
+  subject: DocumentSubject
+  subjectId: string
+  subjectLabel: string
+}
+
+export interface PortalDocument {
+  id: string
+  title: string
+  category: DocumentCategory
+  fileName: string
+  contentType: string
+  sizeBytes: number
+  subject: DocumentSubject
+  subjectId: string
+  subjectLabel: string
+  expiresOn: string | null
+  byYou: boolean
+  createdAtUtc: string
+}

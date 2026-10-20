@@ -12,6 +12,7 @@ import { blankToNull, optionalText } from '../../lib/validation'
 import { Badge, Button, Card, DetailList, ErrorBox, SelectField, TextAreaField, TextField } from '../../components/ui'
 import { MessageForm, RequestDetail, RequestList } from './PortalRequests'
 import { useOpenRequest } from './useOpenRequest'
+import { PortalDocumentsCard, RequestFiles } from './PortalDocuments'
 
 /** What a tenant sees: their lease, notices served on it, and their repair requests. */
 export function TenantPortal() {
@@ -26,19 +27,25 @@ export function TenantPortal() {
   if (open) {
     return (
       <RequestDetail path={`/api/v1/portal/tenant/maintenance/${open}`} onBack={() => setOpen(null)}>
-        {(r, refresh) =>
-          !['Completed', 'Rejected', 'Cancelled'].includes(r.status) && (
-            <Card>
-              <MessageForm
-                label="Add more details"
-                button="Send"
-                path={`/api/v1/portal/tenant/maintenance/${r.id}/comments`}
-                body={(text) => ({ text })}
-                onSaved={refresh}
-              />
-            </Card>
+        {(r, refresh) => {
+          const open = !['Completed', 'Rejected', 'Cancelled'].includes(r.status)
+          return (
+            <>
+              <RequestFiles role="tenant" requestId={r.id} canAddPhotos={open} />
+              {open && (
+                <Card>
+                  <MessageForm
+                    label="Add more details"
+                    button="Send"
+                    path={`/api/v1/portal/tenant/maintenance/${r.id}/comments`}
+                    body={(text) => ({ text })}
+                    onSaved={refresh}
+                  />
+                </Card>
+              )}
+            </>
           )
-        }
+        }}
       </RequestDetail>
     )
   }
@@ -79,6 +86,7 @@ export function TenantPortal() {
         )}
         {requests.data && <RequestList items={requests.data} onOpen={setOpen} empty="You haven't reported any repairs." />}
       </Card>
+      <PortalDocumentsCard role="tenant" />
       <p className="text-xs text-slate-500">Invoices, receipts and online payment will appear here once rent collection is live.</p>
     </div>
   )

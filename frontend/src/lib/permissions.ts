@@ -27,6 +27,9 @@ export const Permissions = {
   maintenanceView: 'Maintenance.View',
   maintenanceManage: 'Maintenance.Manage',
   maintenanceUpdateAssigned: 'Maintenance.UpdateAssigned',
+  documentsView: 'Documents.View',
+  documentsUpload: 'Documents.Upload',
+  documentsDelete: 'Documents.Delete',
 } as const
 
 /** Roles given only to landlords and tenants through a portal invitation. They have no staff permissions. */
