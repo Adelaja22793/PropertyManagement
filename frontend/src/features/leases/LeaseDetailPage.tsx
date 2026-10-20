@@ -12,6 +12,8 @@ import { enumLabel, formatDate, formatDay, formatNaira, todayInLagos } from '../
 import { blankToNull, optionalText, requiredAmount } from '../../lib/validation'
 import { Badge, Button, Card, DetailList, ErrorBox, PageHeader, TextAreaField, TextField } from '../../components/ui'
 import { StageBadge } from './LeaseList'
+import { NoticesPanel } from './NoticesPanel'
+import { InspectionsPanel } from './InspectionsPanel'
 import { defaultEndDate, expiryText, moveInTotal, nextDay, rentChangePercent } from './leaseMath'
 
 type Panel = 'renew' | 'end' | 'cancel' | null
@@ -168,6 +170,9 @@ function LeaseDetailView({ id }: { id: string }) {
             ))}
           </ul>
         </Card>
+
+        {l.status !== 'Draft' && l.status !== 'Cancelled' && <NoticesPanel leaseId={l.id} canServe={active} />}
+        {l.status !== 'Cancelled' && l.status !== 'Renewed' && <InspectionsPanel leaseId={l.id} status={l.status} />}
 
         <Card title="Charges">
           <table className="w-full text-left text-sm">

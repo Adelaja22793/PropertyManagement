@@ -89,3 +89,62 @@ test('a lease is drafted, activated, renewed and ended', async ({ page }) => {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
   expect(overflow).toBeLessThanOrEqual(0)
 })
+
+test('notices and inspections are recorded on a lease', async ({ page }) => {
+  const id = unique()
+  await page.goto('/register')
+  await page.getByLabel('Full name', { exact: true }).fill('Seun Adelaja')
+  await page.getByLabel('Email', { exact: true }).fill(`notice-${id}@example.com`)
+  await page.getByLabel('Password', { exact: true }).fill(password)
+  await page.getByLabel('Company or business name', { exact: true }).fill(`Yaba Homes ${id}`)
+  await page.getByRole('button', { name: 'Create account' }).click()
+  await expect(page.getByRole('heading', { name: 'Welcome, Seun' })).toBeVisible()
+
+  const today = new Date()
+  const iso = (d: Date) => d.toISOString().slice(0, 10)
+  const start = new Date(today)
+  start.setUTCDate(start.getUTCDate() - 300)
+  const end = new Date(start)
+  end.setUTCFullYear(end.getUTCFullYear() + 1)
+  end.setUTCDate(end.getUTCDate() - 1)
+  const property = await api(page, '/api/v1/properties', {
+    code: `YB-${id.slice(-6)}`, name: 'Herbert Macaulay Court', type: 'Residential', addressLine: '200 Herbert Macaulay Way', state: 'Lagos',
+  })
+  const unit = await api(page, `/api/v1/properties/${property.id}/units`, { code: 'C3', type: 'Flat', defaultRent: 1800000, billingFrequency: 'Annual' })
+  const tenant = await api(page, '/api/v1/tenants', { type: 'Individual', name: 'Ifeoma Nwosu', phone: '08037770000' })
+  const lease = await api(page, '/api/v1/leases', {
+    unitId: unit.id, tenantIds: [tenant.id], guarantorIds: [], startDate: iso(start), endDate: iso(end), rentAmount: 1800000,
+    currency: 'NGN', billingFrequency: 'Annual', dueDaysBeforePeriod: 0, graceDays: 7, noticePeriodDays: null,
+    charges: [{ type: 'CautionDeposit', amount: 180000, recurrence: 'OneOff' }],
+  })
+  await api(page, `/api/v1/leases/${lease.id}/activate`, {})
+  await page.goto(`/app/leases/${lease.id}`)
+  await expect(page.getByRole('heading', { name: 'Ifeoma Nwosu · unit C3' })).toBeVisible()
+
+  // Move-in report, starting from the standard list of areas.
+  await page.getByRole('button', { name: 'Record move-in report' }).click()
+  await page.getByLabel('Notes', { exact: true }).first().fill('Freshly painted')
+  await page.getByRole('button', { name: 'Save report' }).click()
+  await expect(page.getByText('Freshly painted')).toBeVisible()
+
+  // A notice to quit gets the Lagos default period for a yearly tenancy.
+  await page.getByRole('button', { name: 'Record a notice' }).click()
+  await expect(page.getByText(/\(182 days\)/)).toBeVisible()
+  await page.getByLabel('Served by').fill('Barr. Adeyemi')
+  await page.getByRole('button', { name: 'Save notice' }).click()
+  await expect(page.getByText(/Served .* · Personal service by Barr\. Adeyemi/)).toBeVisible()
+  await expect(page.getByText('182 days left')).toBeVisible()
+
+  // End the lease, then record the move-out report with a deduction.
+  await page.getByRole('button', { name: 'End lease' }).click()
+  await page.getByLabel('Reason (required)').fill('Tenant bought a house')
+  await page.getByRole('button', { name: 'Terminate lease' }).click()
+  await page.getByRole('button', { name: 'Record move-out report' }).click()
+  await page.getByLabel('Condition', { exact: true }).nth(1).selectOption('Damaged')
+  await page.getByLabel('Deduct (₦)', { exact: true }).nth(1).fill('25000')
+  await expect(page.getByText('Proposed deductions: ₦25,000.00')).toBeVisible()
+  await page.getByRole('button', { name: 'Save report' }).click()
+  await expect(page.getByText('of a ₦180,000.00 deposit')).toBeVisible()
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+  expect(overflow).toBeLessThanOrEqual(0)
+})

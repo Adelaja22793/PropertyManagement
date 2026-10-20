@@ -1,4 +1,9 @@
+using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using PropertyManagement.Application.Abstractions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
@@ -18,6 +23,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public string ConnectionString { get; }
 
+    /// <summary>Every email the API sent during this test class.</summary>
+    public TestEmailSender Emails { get; } = new();
+
     public ApiFactory()
     {
         var server = Environment.GetEnvironmentVariable("PMS_TEST_SQL") ?? DefaultServer;
@@ -32,9 +40,14 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["ConnectionStrings:Default"] = ConnectionString,
             ["Database:MigrateOnStartup"] = "true",
             ["RateLimiting:AuthPermitPerMinute"] = "10000",
-            // Tests run the occupancy refresh themselves, so it never races a test's own changes.
-            ["Jobs:LeaseOccupancy:Enabled"] = "false",
+            // Tests run the lease schedule themselves, so it never races a test's own changes.
+            ["Jobs:Leases:Enabled"] = "false",
         }));
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<IEmailSender>(Emails);
+        });
     }
 
     public Task InitializeAsync()
@@ -53,5 +66,18 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await using var command = connection.CreateCommand();
         command.CommandText = $"ALTER DATABASE [{_database}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{_database}];";
         await command.ExecuteNonQueryAsync();
+    }
+}
+
+public sealed class TestEmailSender : IEmailSender
+{
+    public sealed record Sent(string To, string Subject, string Body);
+
+    public ConcurrentQueue<Sent> Messages { get; } = new();
+
+    public Task SendAsync(string to, string subject, string body, CancellationToken ct)
+    {
+        Messages.Enqueue(new Sent(to, subject, body));
+        return Task.CompletedTask;
     }
 }

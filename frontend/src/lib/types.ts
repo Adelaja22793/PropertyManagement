@@ -407,3 +407,62 @@ export interface LeaseDetail {
   moveOutDate: string | null
   endReason: string | null
 }
+
+export const NoticeTypes = ['NoticeToQuit', 'OwnersIntentionToRecoverPossession', 'RentReview', 'Other'] as const
+export type NoticeType = (typeof NoticeTypes)[number]
+export const ServiceMethods = ['PersonalService', 'PastedOnPremises', 'RegisteredPost', 'Courier', 'Email'] as const
+export type ServiceMethod = (typeof ServiceMethods)[number]
+
+export interface LeaseNotice {
+  id: string
+  type: NoticeType
+  servedOn: string
+  method: ServiceMethod
+  servedBy: string | null
+  expiresOn: string
+  notes: string | null
+  status: 'Served' | 'Withdrawn'
+  withdrawnReason: string | null
+  recordedByName: string | null
+  recordedAtUtc: string
+  hasExpired: boolean
+  daysLeft: number
+}
+
+export interface NoticeDefault {
+  type: NoticeType
+  servedOn: string
+  days: number
+  expiresOn: string
+  basis: string
+}
+
+export const ItemConditions = ['Good', 'Fair', 'Poor', 'Damaged', 'Missing'] as const
+export type ItemCondition = (typeof ItemConditions)[number]
+export type InspectionType = 'MoveIn' | 'MoveOut'
+
+export interface InspectionItem {
+  area: string
+  condition: ItemCondition
+  notes: string | null
+  proposedDeduction: number | null
+}
+
+export interface LeaseInspection {
+  id: string
+  type: InspectionType
+  inspectedOn: string
+  tenantPresent: boolean
+  tenantAgreed: boolean
+  summary: string | null
+  inspectedByName: string | null
+  updatedAtUtc: string
+  items: InspectionItem[]
+  totalProposedDeduction: number
+}
+
+export interface LeaseInspections {
+  moveIn: LeaseInspection | null
+  moveOut: LeaseInspection | null
+  cautionDeposit: number | null
+}
