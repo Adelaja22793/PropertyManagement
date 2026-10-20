@@ -47,6 +47,10 @@ const labels: Record<string, string> = {
   HoldingOver: 'Holding over',
   OneOff: 'One-off (move-in)',
   EachPeriod: 'Every billing period',
+  OwnersIntentionToRecoverPossession: "Owner's intention to recover possession (7-day notice)",
+  PastedOnPremises: 'Pasted on the premises',
+  MoveIn: 'Move-in',
+  MoveOut: 'Move-out',
 }
 
 /** A readable label for an API enum value such as 'UnderRenovation' → 'Under renovation'. */

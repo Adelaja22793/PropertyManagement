@@ -27,6 +27,13 @@ const tones: Record<string, Tone> = {
   Ended: 'slate',
   Terminated: 'slate',
   Cancelled: 'slate',
+  Served: 'amber',
+  Withdrawn: 'slate',
+  Fair: 'slate',
+  Good: 'green',
+  Poor: 'amber',
+  Damaged: 'red',
+  Missing: 'red',
 }
 
 export function statusTone(status: string): Tone {

@@ -23,6 +23,7 @@ export const Permissions = {
   leasesCreate: 'Leases.Create',
   leasesRenew: 'Leases.Renew',
   leasesTerminate: 'Leases.Terminate',
+  leasesIssueNotice: 'Leases.IssueNotice',
 } as const
 
 /** Roles given only to landlords and tenants through a portal invitation. They have no staff permissions. */
