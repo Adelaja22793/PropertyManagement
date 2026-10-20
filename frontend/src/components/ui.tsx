@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
-import { forwardRef } from 'react'
+import { forwardRef, useId } from 'react'
 import { ApiError } from '../lib/api'
 
 export function Button({
@@ -25,7 +25,8 @@ type FieldProps = { label: string; error?: string; hint?: string }
 
 export const TextField = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement> & FieldProps>(
   function TextField({ label, error, hint, id, ...props }, ref) {
-    const inputId = id ?? props.name
+    const autoId = useId()
+    const inputId = id ?? props.name ?? autoId
     return (
       <div className="space-y-1">
         <label htmlFor={inputId} className="block text-sm font-medium text-slate-700">
@@ -51,8 +52,9 @@ export const TextField = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLIn
 )
 
 export const SelectField = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement> & FieldProps>(
-  function SelectField({ label, error, id, children, ...props }, ref) {
-    const selectId = id ?? props.name
+  function SelectField({ label, error, hint, id, children, ...props }, ref) {
+    const autoId = useId()
+    const selectId = id ?? props.name ?? autoId
     return (
       <div className="space-y-1">
         <label htmlFor={selectId} className="block text-sm font-medium text-slate-700">
@@ -66,6 +68,7 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HT
         >
           {children}
         </select>
+        {hint && !error && <p className="text-xs text-slate-500">{hint}</p>}
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
     )
@@ -74,7 +77,8 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HT
 
 export const TextAreaField = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement> & FieldProps>(
   function TextAreaField({ label, error, hint, id, rows = 3, ...props }, ref) {
-    const inputId = id ?? props.name
+    const autoId = useId()
+    const inputId = id ?? props.name ?? autoId
     return (
       <div className="space-y-1">
         <label htmlFor={inputId} className="block text-sm font-medium text-slate-700">

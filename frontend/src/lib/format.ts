@@ -51,6 +51,8 @@ const labels: Record<string, string> = {
   PastedOnPremises: 'Pasted on the premises',
   MoveIn: 'Move-in',
   MoveOut: 'Move-out',
+  PestControl: 'Pest control',
+  WaterSupply: 'Water supply',
 }
 
 /** A readable label for an API enum value such as 'UnderRenovation' → 'Under renovation'. */

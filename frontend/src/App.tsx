@@ -24,6 +24,12 @@ const TenantDetailPage = lazy(() => import('./features/tenants/TenantDetailPage'
 const LeasesPage = lazy(() => import('./features/leases/LeasesPage').then((m) => ({ default: m.LeasesPage })))
 const LeaseDetailPage = lazy(() => import('./features/leases/LeaseDetailPage').then((m) => ({ default: m.LeaseDetailPage })))
 const LeaseEditorPage = lazy(() => import('./features/leases/LeaseEditorPage').then((m) => ({ default: m.LeaseEditorPage })))
+const MaintenancePage = lazy(() => import('./features/maintenance/MaintenancePage').then((m) => ({ default: m.MaintenancePage })))
+const MaintenanceDetailPage = lazy(() => import('./features/maintenance/MaintenanceDetailPage').then((m) => ({ default: m.MaintenanceDetailPage })))
+const VendorsPage = lazy(() => import('./features/maintenance/VendorsPage').then((m) => ({ default: m.VendorsPage })))
+
+const maintenanceAccess = [Permissions.maintenanceView, Permissions.maintenanceUpdateAssigned]
+const vendorAccess = [Permissions.maintenanceView, Permissions.maintenanceManage]
 
 export function App() {
   return (
@@ -46,6 +52,9 @@ export function App() {
         <Route path="leases/new" element={<RequirePermission permission={Permissions.leasesCreate}><LeaseEditorPage /></RequirePermission>} />
         <Route path="leases/:id" element={<RequirePermission permission={Permissions.leasesView}><LeaseDetailPage /></RequirePermission>} />
         <Route path="leases/:id/edit" element={<RequirePermission permission={Permissions.leasesCreate}><LeaseEditorPage /></RequirePermission>} />
+        <Route path="maintenance" element={<RequirePermission permission={maintenanceAccess}><MaintenancePage /></RequirePermission>} />
+        <Route path="maintenance/:id" element={<RequirePermission permission={maintenanceAccess}><MaintenanceDetailPage /></RequirePermission>} />
+        <Route path="vendors" element={<RequirePermission permission={vendorAccess}><VendorsPage /></RequirePermission>} />
         <Route path="branches" element={<RequirePermission permission={Permissions.branchesView}><BranchesPage /></RequirePermission>} />
         <Route path="team" element={<RequirePermission permission={Permissions.usersView}><TeamPage /></RequirePermission>} />
         <Route path="audit" element={<RequirePermission permission={Permissions.auditView}><AuditPage /></RequirePermission>} />

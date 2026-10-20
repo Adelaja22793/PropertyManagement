@@ -42,7 +42,9 @@ export function Forbidden() {
   )
 }
 
-export function RequirePermission({ permission, children }: { permission: string; children: ReactNode }) {
+/** Shows the page when the member holds the permission, or any one of a list of permissions. */
+export function RequirePermission({ permission, children }: { permission: string | string[]; children: ReactNode }) {
   const { can } = useSession()
-  return can(permission) ? <>{children}</> : <Forbidden />
+  const allowed = Array.isArray(permission) ? permission.some(can) : can(permission)
+  return allowed ? <>{children}</> : <Forbidden />
 }

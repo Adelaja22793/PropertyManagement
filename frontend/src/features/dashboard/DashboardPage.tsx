@@ -8,7 +8,7 @@ import { Card, PageHeader } from '../../components/ui'
 
 const comingNext = [
   { phase: 'Phase 4', items: 'Rent invoices, payments, receipts and bank matching, once the finance design is signed off' },
-  { phase: 'Phase 5', items: 'Owner statements, payouts, expenses and maintenance' },
+  { phase: 'Phase 5', items: 'Owner statements, payouts and expenses (maintenance is live)' },
   { phase: 'Phase 6', items: 'Owner and tenant portals, service charges and reports' },
 ]
 
@@ -49,6 +49,17 @@ export function DashboardPage() {
             path="/api/v1/leases?endingWithinDays=90"
             text="Active leases to renew or wind down, including any past their end date."
           />
+        )}
+        {can(Permissions.maintenanceView) && (
+          <CountCard
+            title="Open maintenance"
+            to="/app/maintenance"
+            path="/api/v1/maintenance?open=true"
+            text="Repairs not yet completed, rejected or cancelled."
+          />
+        )}
+        {!can(Permissions.maintenanceView) && can(Permissions.maintenanceUpdateAssigned) && (
+          <CountCard title="My jobs" to="/app/maintenance?filter=mine" path="/api/v1/maintenance?open=true&mine=true" text="Open repair jobs assigned to you." />
         )}
         {can(Permissions.branchesView) && (
           <Card title="Branches" actions={<Link to="/app/branches" className="text-sm font-medium text-brand-700 hover:underline">Manage</Link>}>
