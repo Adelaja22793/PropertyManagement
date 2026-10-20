@@ -239,6 +239,7 @@ export interface Agreement {
   startDate: string
   endDate: string | null
   notes: string | null
+  repairApprovalLimit: number | null
 }
 
 export const IdentityDocumentTypes = ['Nin', 'InternationalPassport', 'DriversLicence', 'VotersCard'] as const
@@ -465,4 +466,111 @@ export interface LeaseInspections {
   moveIn: LeaseInspection | null
   moveOut: LeaseInspection | null
   cautionDeposit: number | null
+}
+
+// Maintenance (Phase 5)
+
+export const MaintenanceCategories = [
+  'Plumbing', 'Electrical', 'Carpentry', 'Painting', 'Roofing', 'Appliances', 'Generator', 'WaterSupply', 'Security',
+  'Cleaning', 'PestControl', 'Structural', 'Other',
+] as const
+export type MaintenanceCategory = (typeof MaintenanceCategories)[number]
+export const MaintenanceUrgencies = ['Emergency', 'High', 'Normal', 'Low'] as const
+export type MaintenanceUrgency = (typeof MaintenanceUrgencies)[number]
+export const MaintenanceStatuses = [
+  'Submitted', 'UnderReview', 'Approved', 'Assigned', 'InProgress', 'AwaitingParts', 'Completed', 'Rejected', 'Cancelled',
+] as const
+export type MaintenanceStatus = (typeof MaintenanceStatuses)[number]
+export type MaintenanceUpdateKind = 'Created' | 'Comment' | 'StatusChanged' | 'Assigned' | 'Estimated' | 'OwnerApproved' | 'Feedback'
+
+export interface Vendor {
+  id: string
+  name: string
+  trade: string | null
+  contactName: string | null
+  phone: string | null
+  email: string | null
+  address: string | null
+  notes: string | null
+  isActive: boolean
+  openJobs: number
+  createdAtUtc: string
+}
+
+export interface MaintenanceSummary {
+  id: string
+  reference: string
+  title: string
+  category: MaintenanceCategory
+  urgency: MaintenanceUrgency
+  status: MaintenanceStatus
+  propertyId: string
+  propertyCode: string
+  propertyName: string
+  unitId: string | null
+  unitCode: string | null
+  assignedToName: string | null
+  vendorName: string | null
+  estimateAmount: number | null
+  awaitingOwnerApproval: boolean
+  createdAtUtc: string
+  updatedAtUtc: string
+}
+
+export interface MaintenanceUpdate {
+  id: string
+  kind: MaintenanceUpdateKind
+  text: string | null
+  fromStatus: MaintenanceStatus | null
+  status: MaintenanceStatus
+  byName: string | null
+  atUtc: string
+}
+
+export interface MaintenanceDetail {
+  id: string
+  reference: string
+  title: string
+  description: string | null
+  category: MaintenanceCategory
+  urgency: MaintenanceUrgency
+  status: MaintenanceStatus
+  propertyId: string
+  propertyCode: string
+  propertyName: string
+  unitId: string | null
+  unitCode: string | null
+  tenantId: string | null
+  tenantName: string | null
+  reportedBy: string | null
+  assignedUserId: string | null
+  assignedToName: string | null
+  vendorId: string | null
+  vendorName: string | null
+  vendorPhone: string | null
+  estimateAmount: number | null
+  estimateNotes: string | null
+  approvalLimit: number | null
+  needsOwnerApproval: boolean
+  ownerApprovalNote: string | null
+  ownerApprovalRecordedAtUtc: string | null
+  approvedByName: string | null
+  approvedAtUtc: string | null
+  completedOn: string | null
+  actualCost: number | null
+  completionNotes: string | null
+  closedReason: string | null
+  tenantRating: number | null
+  tenantFeedback: string | null
+  createdByName: string | null
+  createdAtUtc: string
+  updatedAtUtc: string
+  updates: MaintenanceUpdate[]
+  can: { manage: boolean; work: boolean }
+}
+
+export interface Assignee {
+  userId: string
+  fullName: string
+  email: string
 }

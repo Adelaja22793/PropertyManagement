@@ -59,6 +59,7 @@ export function AgreementsPanel({ ownerId, properties }: { ownerId: string; prop
               <p className="text-xs text-slate-500">
                 Payouts {enumLabel(a.payoutFrequency).toLowerCase()} · advance rent released {enumLabel(a.advanceRentRelease).toLowerCase()}
                 {a.reserveAmount > 0 && ` · reserve ${formatNaira(a.reserveAmount)}`}
+                {a.repairApprovalLimit !== null && ` · repairs over ${formatNaira(a.repairApprovalLimit)} need approval`}
               </p>
               <p className="text-xs text-slate-500">
                 {formatDay(a.startDate)} – {a.endDate ? formatDay(a.endDate) : 'open-ended'}
@@ -85,6 +86,7 @@ const schema = z
     payoutFrequency: z.enum(PayoutFrequencies),
     advanceRentRelease: z.enum(AdvanceRentReleases),
     reserveAmount: optionalAmount,
+    repairApprovalLimit: optionalAmount,
     startDate: z.string().min(1, 'Choose a start date.'),
     endDate: z.string(),
     notes: optionalText(2000),
@@ -118,6 +120,7 @@ function AgreementForm({
       payoutFrequency: agreement?.payoutFrequency ?? 'Monthly',
       advanceRentRelease: agreement?.advanceRentRelease ?? 'OnReceipt',
       reserveAmount: agreement?.reserveAmount.toString() ?? '0',
+      repairApprovalLimit: agreement?.repairApprovalLimit?.toString() ?? '',
       startDate: agreement?.startDate ?? todayInLagos(),
       endDate: agreement?.endDate ?? '',
       notes: agreement?.notes ?? '',
@@ -135,6 +138,7 @@ function AgreementForm({
         payoutFrequency: v.payoutFrequency,
         advanceRentRelease: v.advanceRentRelease,
         reserveAmount: numberOrNull(v.reserveAmount) ?? 0,
+        repairApprovalLimit: numberOrNull(v.repairApprovalLimit),
         startDate: v.startDate,
         endDate: v.endDate || null,
         notes: blankToNull(v.notes),
@@ -192,7 +196,13 @@ function AgreementForm({
           ))}
         </SelectField>
         <TextField label="Reserve (₦)" inputMode="decimal" hint="Held back from each payout." {...register('reserveAmount')} error={errors.reserveAmount?.message} />
-        <div className="hidden sm:block" />
+        <TextField
+          label="Repair approval limit (₦)"
+          inputMode="decimal"
+          hint="Repairs estimated above this need the owner's approval. Blank for no limit."
+          {...register('repairApprovalLimit')}
+          error={errors.repairApprovalLimit?.message}
+        />
         <TextField label="Start date" type="date" {...register('startDate')} error={errors.startDate?.message} />
         <TextField label="End date" type="date" hint="Leave blank if open-ended." {...register('endDate')} error={errors.endDate?.message} />
       </div>

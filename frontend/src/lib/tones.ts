@@ -34,6 +34,16 @@ const tones: Record<string, Tone> = {
   Poor: 'amber',
   Damaged: 'red',
   Missing: 'red',
+  Submitted: 'amber',
+  UnderReview: 'amber',
+  Assigned: 'slate',
+  InProgress: 'slate',
+  AwaitingParts: 'amber',
+  Completed: 'green',
+  Emergency: 'red',
+  High: 'amber',
+  Normal: 'slate',
+  Low: 'slate',
 }
 
 export function statusTone(status: string): Tone {

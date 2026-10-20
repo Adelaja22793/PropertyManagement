@@ -19,7 +19,8 @@ public sealed record AgreementTerms(
     decimal ReserveAmount,
     DateOnly StartDate,
     DateOnly? EndDate,
-    string? Notes);
+    string? Notes,
+    decimal? RepairApprovalLimit = null);
 
 /// <summary>
 /// The fee and payout terms agreed with an owner (design 6.3), for one property or, when PropertyId is null,
@@ -52,6 +53,8 @@ public class ManagementAgreement : IOrganizationScoped
     public AdvanceRentRelease AdvanceRentRelease { get; private set; }
     /// <summary>Amount held back from payouts for repairs.</summary>
     public decimal ReserveAmount { get; private set; }
+    /// <summary>Repairs estimated above this need the owner's approval first (design 6.11). Null means no limit.</summary>
+    public decimal? RepairApprovalLimit { get; private set; }
     public DateOnly StartDate { get; private set; }
     public DateOnly? EndDate { get; private set; }
     public string? Notes { get; private set; }
@@ -84,6 +87,7 @@ public class ManagementAgreement : IOrganizationScoped
         PayoutFrequency = t.PayoutFrequency;
         AdvanceRentRelease = t.AdvanceRentRelease;
         ReserveAmount = Guard.NonNegative(t.ReserveAmount, "Reserve");
+        RepairApprovalLimit = Guard.NonNegative(t.RepairApprovalLimit, "Repair approval limit");
         StartDate = t.StartDate;
         EndDate = t.EndDate;
         Notes = Guard.Optional(t.Notes, "Notes", 2000);

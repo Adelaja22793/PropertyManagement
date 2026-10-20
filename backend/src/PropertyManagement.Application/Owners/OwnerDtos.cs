@@ -28,12 +28,12 @@ public sealed record DecideBankAccountRequest(bool Approve, string? Note);
 
 public sealed record AgreementDto(Guid Id, Guid OwnerId, Guid? PropertyId, string? PropertyName, ManagementFeeBasis FeeBasis,
     decimal FeeValue, decimal? LettingFeePercent, PayoutFrequency PayoutFrequency, AdvanceRentRelease AdvanceRentRelease,
-    decimal ReserveAmount, DateOnly StartDate, DateOnly? EndDate, string? Notes);
+    decimal ReserveAmount, DateOnly StartDate, DateOnly? EndDate, string? Notes, decimal? RepairApprovalLimit);
 
 public sealed record SaveAgreementRequest(Guid? PropertyId, ManagementFeeBasis FeeBasis, decimal FeeValue,
     decimal? LettingFeePercent, PayoutFrequency PayoutFrequency, AdvanceRentRelease AdvanceRentRelease,
-    decimal ReserveAmount, DateOnly StartDate, DateOnly? EndDate, string? Notes)
+    decimal ReserveAmount, DateOnly StartDate, DateOnly? EndDate, string? Notes, decimal? RepairApprovalLimit = null)
 {
     internal AgreementTerms ToTerms() => new(PropertyId, FeeBasis, FeeValue, LettingFeePercent, PayoutFrequency,
-        AdvanceRentRelease, ReserveAmount, StartDate, EndDate, Notes);
+        AdvanceRentRelease, ReserveAmount, StartDate, EndDate, Notes, RepairApprovalLimit);
 }

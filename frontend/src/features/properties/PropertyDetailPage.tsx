@@ -12,6 +12,7 @@ import { PropertyForm } from './PropertyForm'
 import { UnitsPanel } from './UnitsPanel'
 import { OwnershipPanel } from './OwnershipPanel'
 import { LeasesPanel } from '../leases/LeasesPage'
+import { MaintenancePanel } from '../maintenance/MaintenancePage'
 
 export function PropertyDetailPage() {
   const { id = '' } = useParams()
@@ -93,6 +94,7 @@ export function PropertyDetailPage() {
         {can(Permissions.leasesView) && (
           <LeasesPanel filter={`propertyId=${p.id}`} newLeaseQuery={archived ? undefined : `propertyId=${p.id}`} showProperty={false} />
         )}
+        {can(Permissions.maintenanceView) && <MaintenancePanel propertyId={p.id} archived={archived} />}
         <OwnershipPanel propertyId={p.id} archived={archived} />
       </div>
     </>

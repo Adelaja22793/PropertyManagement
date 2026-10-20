@@ -3,7 +3,7 @@
 A multi-company property management platform for Nigerian property managers and landlords.
 It follows the design in *Property Management System: Requirements & Technical Design v1.1*.
 
-**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) Phase 3 (properties, units, owners and tenants) and the first part of Phase 4 (leases). No money features yet: invoices, payments and payouts wait for the accountant and tax adviser to sign off the [finance design](https://claude.ai/code/artifact/59369177-0d67-4085-a6e6-054ed378947e).**
+**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) Phase 3 (properties, units, owners and tenants) the first part of Phase 4 (leases) and the first part of Phase 5 (maintenance and vendors). No money features yet: invoices, payments and payouts wait for the accountant and tax adviser to sign off the [finance design](https://claude.ai/code/artifact/59369177-0d67-4085-a6e6-054ed378947e).**
 
 ## What works today
 
@@ -42,6 +42,16 @@ It follows the design in *Property Management System: Requirements & Technical D
 - **Notices.** Record a notice served on the tenants (notice to quit, 7-day notice of owner's intention to recover possession, rent review, other): date, method of service, who served it and when it expires. The expiry defaults to the lease's notice period, or the Lagos Tenancy Law 2011 period for the tenancy (6 months yearly, 3 months half-yearly or quarterly, 1 month monthly; 7 days for owner's intention). The owner's intention notice is refused until a notice to quit has expired. Notices can be withdrawn but not deleted. A lawyer should confirm the periods for each organization.
 - **Inspections.** One move-in and one move-out condition report per lease, area by area. A move-out report starts from the move-in areas and can propose deductions from the caution deposit (a proposal only until the finance work lands).
 - **Reminders.** An hourly job emails the property's manager (or the organization admins when there is none) 90, 60 and 30 days before a lease ends, when a lease starts holding over, and when a served notice expires. Leases with a renewal drafted are skipped. Each reminder is sent once.
+
+### Maintenance and vendors (Phase 5, no money yet)
+
+- **Requests.** Staff log a repair on a property or unit: the problem, category, urgency (emergency, high, normal, low), who reported it and, when the unit is let, the tenant. Each gets a number such as MNT-00001 and a timeline of every step and update.
+- **Workflow.** Submitted, under review, approved, assigned, in progress, awaiting parts, completed, or rejected or cancelled with a reason. Steps out of order are refused.
+- **Estimates and owner approval.** Each management agreement can set a repair approval limit. An estimate above the limit (the lowest limit among the property's current owners) needs the owner's approval recorded, such as "approved by WhatsApp", before the work is approved. Raising the estimate later needs it again.
+- **Assignment** to a staff member, a vendor or both. The staff member gets an email. Maintenance staff see and update only the jobs assigned to them; reviewing, estimating, approving, assigning, rejecting and cancelling need `Maintenance.Manage`.
+- **Completion** records the date, final cost and notes, and the tenant's rating afterwards. The cost isn't charged to the owner yet; that arrives with the finance work.
+- **Vendors.** One list of suppliers and contractors with trade and contact details. Inactive vendors keep their history but can't get new jobs.
+- The dashboard shows open requests, and each property page lists its open requests.
 
 ## How organization isolation works
 
@@ -88,7 +98,7 @@ Emails (invitations, password resets) are only logged in development. The person
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 60 unit + 77 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd backend && dotnet test        # 66 unit + 81 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
 cd frontend && npm test          # 31 component and client tests
 cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running)
 ```
@@ -147,6 +157,17 @@ Each integration test class creates its own database and drops it afterwards.
 | POST | /api/v1/leases/{id}/notices/{noticeId}/withdraw | |
 | GET | /api/v1/leases/{id}/inspections | Move-in and move-out reports, with the deposit on the lease |
 | PUT | /api/v1/leases/{id}/inspections/{MoveIn\|MoveOut} | Record or replace a report |
+| GET, POST | /api/v1/maintenance | Search (`search`, `status`, `open`, `urgency`, `propertyId`, `unitId`, `vendorId`, `mine`, paging); report a repair |
+| GET, PUT | /api/v1/maintenance/{id} | Maintenance staff reach only jobs assigned to them |
+| POST | /api/v1/maintenance/{id}/review, /approve, /start, /complete | Workflow steps; start and complete are open to the assignee |
+| POST | /api/v1/maintenance/{id}/estimate, /owner-approval | Estimate against the owner's repair approval limit |
+| POST | /api/v1/maintenance/{id}/assign | Staff member and/or vendor |
+| POST | /api/v1/maintenance/{id}/awaiting-parts, /comments | Open to the assignee |
+| POST | /api/v1/maintenance/{id}/reject, /cancel, /feedback | |
+| GET | /api/v1/maintenance/assignees, /approval-limit | Members who can take jobs; a property's limit |
+| GET, POST | /api/v1/vendors | Search; create |
+| GET, PUT | /api/v1/vendors/{id} | |
+| PUT | /api/v1/vendors/{id}/active | Deactivate or reactivate |
 | GET | /api/v1/plans | Public |
 | GET | /health | |
 
@@ -162,7 +183,9 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 - The audit table is append-only in code; also deny UPDATE and DELETE to the app's database login.
 - Data Protection keys (which encrypt identity numbers and sign-in cookies) are stored in the `DataProtectionKeys` table. In production also encrypt the keys themselves, for example with `ProtectKeysWithAzureKeyVault` or a certificate, so a database copy alone can't decrypt NIN or BVN.
 - Invoices, payments, receipts, deposits held and owner payouts (rest of Phase 4) wait for the finance design sign-off.
-- Generating notice and tenancy agreement documents from lawyer-approved templates, and inspection photos (both need file storage).
+- Generating notice and tenancy agreement documents from lawyer-approved templates, and inspection and repair photos (both need file storage).
+- Repair costs posted as expenses against the owner or service charge, vendor invoices and payments (wait for the finance sign-off).
+- Tenants reporting repairs themselves through the tenant portal, and SMS alerts for emergencies.
 - Reminders to tenants themselves (by SMS or the tenant portal), and notice periods set per organization or state rather than the Lagos defaults.
 - Shared occupancy of one unit by several separate leases.
 - Two people activating overlapping leases at the very same moment could both succeed; add a database lock or check if that becomes a real risk.

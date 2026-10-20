@@ -141,7 +141,7 @@ public sealed class OwnerService(
             .Select(a => new AgreementDto(a.Id, a.OwnerId, a.PropertyId,
                 db.Properties.Where(p => p.Id == a.PropertyId).Select(p => p.Name).FirstOrDefault(),
                 a.FeeBasis, a.FeeValue, a.LettingFeePercent, a.PayoutFrequency, a.AdvanceRentRelease, a.ReserveAmount,
-                a.StartDate, a.EndDate, a.Notes))
+                a.StartDate, a.EndDate, a.Notes, a.RepairApprovalLimit))
             .ToListAsync(ct);
     }
 

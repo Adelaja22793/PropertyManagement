@@ -24,7 +24,8 @@ public sealed class PermissionHandler(ICurrentOrganization currentOrganization) 
 {
     protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, PermissionRequirement requirement)
     {
-        if (currentOrganization.HasPermission(requirement.Permission)) context.Succeed(requirement);
+        // "A|B" means any one of the listed permissions (see RequireAnyPermissionAttribute).
+        if (requirement.Permission.Split('|').Any(currentOrganization.HasPermission)) context.Succeed(requirement);
         return Task.CompletedTask;
     }
 }

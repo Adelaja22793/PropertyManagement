@@ -10,6 +10,7 @@ const nav = [
   { to: '/app/owners', label: 'Owners', permission: Permissions.ownersView },
   { to: '/app/tenants', label: 'Tenants', permission: Permissions.tenantsView },
   { to: '/app/leases', label: 'Leases', permission: Permissions.leasesView },
+  { to: '/app/maintenance', label: 'Maintenance', permission: [Permissions.maintenanceView, Permissions.maintenanceUpdateAssigned] },
   { to: '/app/branches', label: 'Branches', permission: Permissions.branchesView },
   { to: '/app/team', label: 'Team', permission: Permissions.usersView },
   { to: '/app/audit', label: 'Audit log', permission: Permissions.auditView },
@@ -24,7 +25,7 @@ export function AppLayout() {
 
   // Owners and tenants invited to a portal have no staff permissions; they never see staff pages.
   const portalOnly = organization.roles.length > 0 && organization.roles.every((r) => (PortalRoles as readonly string[]).includes(r))
-  const links = portalOnly ? [{ to: '/app', label: 'Home', end: true }] : nav.filter((item) => can(item.permission))
+  const links = portalOnly ? [{ to: '/app', label: 'Home', end: true }] : nav.filter((item) => (Array.isArray(item.permission) ? item.permission.some(can) : can(item.permission)))
 
   return (
     <div className="flex min-h-full flex-col md:flex-row">
