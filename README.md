@@ -3,7 +3,7 @@
 A multi-company property management platform for Nigerian property managers and landlords.
 It follows the design in *Property Management System: Requirements & Technical Design v1.1*.
 
-**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) Phase 3 (properties, units, owners and tenants) the first part of Phase 4 (leases) the first part of Phase 5 (maintenance and vendors), the owner and tenant portals, documents and photos, and public listings with enquiries and viewings. No money features yet: invoices, payments and payouts wait for the accountant and tax adviser to sign off the [finance design](https://claude.ai/code/artifact/59369177-0d67-4085-a6e6-054ed378947e).**
+**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) Phase 3 (properties, units, owners and tenants) the first part of Phase 4 (leases) the first part of Phase 5 (maintenance and vendors), the owner and tenant portals, documents and photos, public listings with enquiries and viewings, and operational reports. No money features yet: invoices, payments and payouts wait for the accountant and tax adviser to sign off the [finance design](https://claude.ai/code/artifact/59369177-0d67-4085-a6e6-054ed378947e).**
 
 ## What works today
 
@@ -45,6 +45,14 @@ It follows the design in *Property Management System: Requirements & Technical D
 - **Enquiries** from the public form (with a hidden field that quietly drops spam bots) or added by staff for phone, walk-in or referral contacts. Each new web enquiry is emailed to the listing's agent, else the property manager, else the company admins.
 - **Viewings** are booked against an enquiry with a time (Lagos) and agent, then marked viewed, no-show or cancelled. Enquiries move through New, Contacted, Viewing booked, Applied, Won or Lost.
 - **Who sees what.** `Listings.Manage` creates and publishes; `Leads.Manage` works enquiries. A member whose only listing role is Agent sees just the listings assigned to them and can't reassign them. Starting a lease on the unit closes its listing as let.
+
+### Reports (no money yet)
+
+- **Seven reports** under Reports: occupancy and vacancy, the property and unit register (with how long empty units have been vacant), lease expiry and renewals, notices served, maintenance by category, letting activity, and user activity.
+- **Same access as the screens.** Each report needs the permission of the screen it summarises (for example `Leases.View` for lease expiries, `Audit.View` for user activity) and covers only the properties the member can see. The unit register leaves out tenants and leases for members without `Leases.View`.
+- **Filters** for a period (up to a year; expiries default to the next 90 days, everything else to the last 90), a property and a branch.
+- **CSV download** of exactly what is on screen. Every download is audited, and text a spreadsheet would run as a formula is kept as text.
+- Rent roll, arrears, collections, owner statements, payouts, deposits, service charge and tax reports come with the finance work.
 
 ### Owner and tenant portals
 
@@ -123,8 +131,8 @@ Emails (invitations, password resets) are only logged in development. The person
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 81 unit + 91 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
-cd frontend && npm test          # 36 component and client tests
+cd backend && dotnet test        # 90 unit + 95 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd frontend && npm test          # 39 component and client tests
 cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running)
 ```
 
@@ -212,6 +220,8 @@ Each integration test class creates its own database and drops it afterwards.
 | GET | /api/v1/public/organizations/{slug}/listings | Public, rate-limited |
 | GET | /api/v1/public/listings/{code}, /photos/{documentId} | Public, rate-limited |
 | POST | /api/v1/public/listings/{code}/enquiries | Public, 5 a minute per address by default |
+| GET | /api/v1/reports | Reports this member may run |
+| GET | /api/v1/reports/{key} | `from`, `to`, `propertyId`, `branchId`; `format=csv` downloads it |
 | GET, POST | /api/v1/vendors | Search; create |
 | GET, PUT | /api/v1/vendors/{id} | |
 | PUT | /api/v1/vendors/{id}/active | Deactivate or reactivate |

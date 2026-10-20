@@ -12,6 +12,11 @@ const nav = [
   { to: '/app/leases', label: 'Leases', permission: Permissions.leasesView },
   { to: '/app/maintenance', label: 'Maintenance', permission: [Permissions.maintenanceView, Permissions.maintenanceUpdateAssigned] },
   { to: '/app/listings', label: 'Listings', permission: [Permissions.listingsManage, Permissions.leadsManage] },
+  {
+    to: '/app/reports',
+    label: 'Reports',
+    permission: [Permissions.propertiesView, Permissions.leasesView, Permissions.maintenanceView, Permissions.leadsManage, Permissions.auditView],
+  },
   { to: '/app/branches', label: 'Branches', permission: Permissions.branchesView },
   { to: '/app/team', label: 'Team', permission: Permissions.usersView },
   { to: '/app/audit', label: 'Audit log', permission: Permissions.auditView },
