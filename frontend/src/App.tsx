@@ -26,6 +26,7 @@ const LeaseDetailPage = lazy(() => import('./features/leases/LeaseDetailPage').t
 const LeaseEditorPage = lazy(() => import('./features/leases/LeaseEditorPage').then((m) => ({ default: m.LeaseEditorPage })))
 const MaintenancePage = lazy(() => import('./features/maintenance/MaintenancePage').then((m) => ({ default: m.MaintenancePage })))
 const MaintenanceDetailPage = lazy(() => import('./features/maintenance/MaintenanceDetailPage').then((m) => ({ default: m.MaintenanceDetailPage })))
+const PortalHome = lazy(() => import('./features/portal/PortalHome').then((m) => ({ default: m.PortalHome })))
 const VendorsPage = lazy(() => import('./features/maintenance/VendorsPage').then((m) => ({ default: m.VendorsPage })))
 
 const maintenanceAccess = [Permissions.maintenanceView, Permissions.maintenanceUpdateAssigned]
@@ -55,6 +56,7 @@ export function App() {
         <Route path="maintenance" element={<RequirePermission permission={maintenanceAccess}><MaintenancePage /></RequirePermission>} />
         <Route path="maintenance/:id" element={<RequirePermission permission={maintenanceAccess}><MaintenanceDetailPage /></RequirePermission>} />
         <Route path="vendors" element={<RequirePermission permission={vendorAccess}><VendorsPage /></RequirePermission>} />
+        <Route path="portal" element={<PortalHome />} />
         <Route path="branches" element={<RequirePermission permission={Permissions.branchesView}><BranchesPage /></RequirePermission>} />
         <Route path="team" element={<RequirePermission permission={Permissions.usersView}><TeamPage /></RequirePermission>} />
         <Route path="audit" element={<RequirePermission permission={Permissions.auditView}><AuditPage /></RequirePermission>} />

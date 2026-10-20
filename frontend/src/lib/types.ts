@@ -574,3 +574,106 @@ export interface Assignee {
   fullName: string
   email: string
 }
+
+// Portals (Phase 6)
+
+export interface PortalLeaseBrief {
+  reference: string
+  tenantName: string | null
+  rentAmount: number
+  currency: string
+  billingFrequency: BillingFrequency
+  startDate: string
+  endDate: string
+  stage: string
+}
+
+export interface PortalProperty {
+  id: string
+  code: string
+  name: string
+  addressLine: string
+  city: string | null
+  state: string
+  sharePercent: number
+  units: { code: string; type: string; bedrooms: number | null; occupancyStatus: OccupancyStatus; lease: PortalLeaseBrief | null }[]
+}
+
+export interface OwnerPortal {
+  ownerName: string
+  organizationName: string
+  properties: PortalProperty[]
+  openMaintenance: number
+  awaitingYourApproval: number
+}
+
+export interface PortalLease {
+  id: string
+  reference: string
+  propertyName: string
+  addressLine: string
+  city: string | null
+  state: string
+  unitId: string
+  unitCode: string
+  status: string
+  stage: string
+  startDate: string
+  endDate: string
+  rentAmount: number
+  currency: string
+  billingFrequency: BillingFrequency
+  dueDaysBeforePeriod: number
+  graceDays: number
+  noticePeriodDays: number | null
+  renewalTerms: string | null
+  moveOutDate: string | null
+  tenants: string[]
+  charges: { type: string; description: string | null; amount: number; recurrence: string }[]
+  notices: { type: string; servedOn: string; expiresOn: string; notes: string | null }[]
+}
+
+export interface TenantPortal {
+  tenantName: string
+  organizationName: string
+  leases: PortalLease[]
+}
+
+export interface PortalRequestSummary {
+  id: string
+  reference: string
+  title: string
+  category: MaintenanceCategory
+  urgency: MaintenanceUrgency
+  status: MaintenanceStatus
+  propertyName: string
+  unitCode: string | null
+  estimateAmount: number | null
+  awaitingOwnerApproval: boolean
+  createdAtUtc: string
+  updatedAtUtc: string
+}
+
+export interface PortalRequestDetail {
+  id: string
+  reference: string
+  title: string
+  description: string | null
+  category: MaintenanceCategory
+  urgency: MaintenanceUrgency
+  status: MaintenanceStatus
+  propertyName: string
+  unitCode: string | null
+  vendorName: string | null
+  estimateAmount: number | null
+  estimateNotes: string | null
+  approvalLimit: number | null
+  awaitingOwnerApproval: boolean
+  ownerApprovalNote: string | null
+  completedOn: string | null
+  actualCost: number | null
+  completionNotes: string | null
+  closedReason: string | null
+  createdAtUtc: string
+  updates: { kind: MaintenanceUpdateKind; text: string | null; status: MaintenanceStatus; byYou: boolean; atUtc: string }[]
+}

@@ -3,7 +3,7 @@
 A multi-company property management platform for Nigerian property managers and landlords.
 It follows the design in *Property Management System: Requirements & Technical Design v1.1*.
 
-**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) Phase 3 (properties, units, owners and tenants) the first part of Phase 4 (leases) and the first part of Phase 5 (maintenance and vendors). No money features yet: invoices, payments and payouts wait for the accountant and tax adviser to sign off the [finance design](https://claude.ai/code/artifact/59369177-0d67-4085-a6e6-054ed378947e).**
+**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) Phase 3 (properties, units, owners and tenants) the first part of Phase 4 (leases) the first part of Phase 5 (maintenance and vendors) and the owner and tenant portals. No money features yet: invoices, payments and payouts wait for the accountant and tax adviser to sign off the [finance design](https://claude.ai/code/artifact/59369177-0d67-4085-a6e6-054ed378947e).**
 
 ## What works today
 
@@ -28,7 +28,14 @@ It follows the design in *Property Management System: Requirements & Technical D
 - **Tenants** (individuals or companies) with contacts, employer, emergency contact, RC number and TIN.
 - **Identity details (KYC).** NIN or other ID and BVN are encrypted with ASP.NET Core Data Protection before they are stored. Everyone with `Tenants.View` sees only the ID type and last four digits; the full numbers need `Tenants.ViewKyc`, and every reveal is audited. Numbers never go in the audit log.
 - **Guarantors** and **screening checks** (employer, previous landlord, references) recorded against the tenant, with who checked and the outcome.
-- **Portal invitations** for owners and tenants. Accepting links the login to that owner or tenant record. Portal users have no staff permissions and are not listed as team members; the portal screens themselves come later.
+- **Portal invitations** for owners and tenants. Accepting links the login to that owner or tenant record. Portal users have no staff permissions and are not listed as team members.
+
+### Owner and tenant portals
+
+- **One login, own records only.** A portal user reaches only the owner or tenant record their invitation linked. Staff who are also an owner or tenant get a "My portal" link.
+- **Owners** see each property they hold a current share in, its units, who is in each and the rent, plus repairs on those properties. When an estimate is above their repair approval limit they approve it (recorded as the owner's approval and emailed to staff) or decline it with a reason.
+- **Tenants** see their leases, other charges and notices served on them, report repairs against an active lease (emailed to the property manager, marked EMERGENCY when urgent) and follow progress. Staff comments stay internal; a tenant sees their own messages and the workflow steps.
+- Statements, invoices, receipts and online payment come with the finance work.
 
 ### Leases (Phase 4, no money yet)
 
@@ -98,7 +105,7 @@ Emails (invitations, password resets) are only logged in development. The person
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 66 unit + 81 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd backend && dotnet test        # 66 unit + 84 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
 cd frontend && npm test          # 31 component and client tests
 cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running)
 ```
@@ -165,6 +172,10 @@ Each integration test class creates its own database and drops it afterwards.
 | POST | /api/v1/maintenance/{id}/awaiting-parts, /comments | Open to the assignee |
 | POST | /api/v1/maintenance/{id}/reject, /cancel, /feedback | |
 | GET | /api/v1/maintenance/assignees, /approval-limit | Members who can take jobs; a property's limit |
+| GET | /api/v1/portal/owner, /maintenance, /maintenance/{id} | Owner's properties and repairs (Owner role) |
+| POST | /api/v1/portal/owner/maintenance/{id}/approve, /decline | Owner's decision on an estimate above their limit |
+| GET | /api/v1/portal/tenant, /maintenance, /maintenance/{id} | Tenant's leases and repairs (Tenant role) |
+| POST | /api/v1/portal/tenant/maintenance, /maintenance/{id}/comments | Report a repair; add details |
 | GET, POST | /api/v1/vendors | Search; create |
 | GET, PUT | /api/v1/vendors/{id} | |
 | PUT | /api/v1/vendors/{id}/active | Deactivate or reactivate |
@@ -185,9 +196,9 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 - Invoices, payments, receipts, deposits held and owner payouts (rest of Phase 4) wait for the finance design sign-off.
 - Generating notice and tenancy agreement documents from lawyer-approved templates, and inspection and repair photos (both need file storage).
 - Repair costs posted as expenses against the owner or service charge, vendor invoices and payments (wait for the finance sign-off).
-- Tenants reporting repairs themselves through the tenant portal, and SMS alerts for emergencies.
+- SMS alerts for emergency repairs.
 - Reminders to tenants themselves (by SMS or the tenant portal), and notice periods set per organization or state rather than the Lagos defaults.
 - Shared occupancy of one unit by several separate leases.
 - Two people activating overlapping leases at the very same moment could both succeed; add a database lock or check if that becomes a real risk.
-- Owner and tenant portal screens (the invitations and record links are in place).
+- Money in the portals (owner statements and payouts, tenant invoices, receipts and online payment), and documents and SMS for portal users.
 - Documents and photos for properties, owners and tenants (needs file storage with virus scanning, design 3.5).
