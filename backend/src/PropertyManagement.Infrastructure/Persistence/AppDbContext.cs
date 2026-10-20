@@ -9,6 +9,7 @@ using PropertyManagement.Domain.Auditing;
 using PropertyManagement.Domain.Documents;
 using PropertyManagement.Domain.Common;
 using PropertyManagement.Domain.Leases;
+using PropertyManagement.Domain.Listings;
 using PropertyManagement.Domain.Maintenance;
 using PropertyManagement.Domain.Organizations;
 using PropertyManagement.Domain.Owners;
@@ -51,6 +52,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentOrgani
     public DbSet<Vendor> Vendors => Set<Vendor>();
     public DbSet<MaintenanceRequest> MaintenanceRequests => Set<MaintenanceRequest>();
     public DbSet<Document> Documents => Set<Document>();
+    public DbSet<Listing> Listings => Set<Listing>();
+    public DbSet<Lead> Leads => Set<Lead>();
     public DbSet<MaintenanceUpdate> MaintenanceUpdates => Set<MaintenanceUpdate>();
 
     /// <summary>Data Protection keys used to encrypt identity numbers. Shared by all API instances.</summary>

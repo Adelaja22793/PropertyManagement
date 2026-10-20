@@ -11,6 +11,7 @@ const nav = [
   { to: '/app/tenants', label: 'Tenants', permission: Permissions.tenantsView },
   { to: '/app/leases', label: 'Leases', permission: Permissions.leasesView },
   { to: '/app/maintenance', label: 'Maintenance', permission: [Permissions.maintenanceView, Permissions.maintenanceUpdateAssigned] },
+  { to: '/app/listings', label: 'Listings', permission: [Permissions.listingsManage, Permissions.leadsManage] },
   { to: '/app/branches', label: 'Branches', permission: Permissions.branchesView },
   { to: '/app/team', label: 'Team', permission: Permissions.usersView },
   { to: '/app/audit', label: 'Audit log', permission: Permissions.auditView },

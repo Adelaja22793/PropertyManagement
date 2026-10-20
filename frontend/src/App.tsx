@@ -1,4 +1,4 @@
-import { lazy } from 'react'
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './app/AppLayout'
 import { GuestOnly, RequirePermission, RequireSession, RequireUser } from './app/guards'
@@ -27,10 +27,17 @@ const LeaseEditorPage = lazy(() => import('./features/leases/LeaseEditorPage').t
 const MaintenancePage = lazy(() => import('./features/maintenance/MaintenancePage').then((m) => ({ default: m.MaintenancePage })))
 const MaintenanceDetailPage = lazy(() => import('./features/maintenance/MaintenanceDetailPage').then((m) => ({ default: m.MaintenanceDetailPage })))
 const PortalHome = lazy(() => import('./features/portal/PortalHome').then((m) => ({ default: m.PortalHome })))
+const ListingsPage = lazy(() => import('./features/listings/ListingsPage').then((m) => ({ default: m.ListingsPage })))
+const ListingDetailPage = lazy(() => import('./features/listings/ListingDetailPage').then((m) => ({ default: m.ListingDetailPage })))
+const ListingEditorPage = lazy(() => import('./features/listings/ListingEditorPage').then((m) => ({ default: m.ListingEditorPage })))
+const LeadDetailPage = lazy(() => import('./features/listings/LeadDetailPage').then((m) => ({ default: m.LeadDetailPage })))
+const PublicCompanyPage = lazy(() => import('./features/public/PublicPages').then((m) => ({ default: m.PublicCompanyPage })))
+const PublicListingPage = lazy(() => import('./features/public/PublicPages').then((m) => ({ default: m.PublicListingPage })))
 const VendorsPage = lazy(() => import('./features/maintenance/VendorsPage').then((m) => ({ default: m.VendorsPage })))
 
 const maintenanceAccess = [Permissions.maintenanceView, Permissions.maintenanceUpdateAssigned]
 const vendorAccess = [Permissions.maintenanceView, Permissions.maintenanceManage]
+const listingAccess = [Permissions.listingsManage, Permissions.leadsManage]
 
 export function App() {
   return (
@@ -40,6 +47,9 @@ export function App() {
       <Route path="/forgot-password" element={<GuestOnly><ForgotPasswordPage /></GuestOnly>} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/join" element={<JoinPage />} />
+      {/* The public site: no sign-in. */}
+      <Route path="/to-let/:slug" element={<Suspense fallback={null}><PublicCompanyPage /></Suspense>} />
+      <Route path="/listing/:code" element={<Suspense fallback={null}><PublicListingPage /></Suspense>} />
       <Route path="/organizations/new" element={<RequireUser><NewOrganizationPage /></RequireUser>} />
       <Route path="/app" element={<RequireSession><AppLayout /></RequireSession>}>
         <Route index element={<DashboardPage />} />
@@ -56,6 +66,11 @@ export function App() {
         <Route path="maintenance" element={<RequirePermission permission={maintenanceAccess}><MaintenancePage /></RequirePermission>} />
         <Route path="maintenance/:id" element={<RequirePermission permission={maintenanceAccess}><MaintenanceDetailPage /></RequirePermission>} />
         <Route path="vendors" element={<RequirePermission permission={vendorAccess}><VendorsPage /></RequirePermission>} />
+        <Route path="listings" element={<RequirePermission permission={listingAccess}><ListingsPage /></RequirePermission>} />
+        <Route path="listings/new" element={<RequirePermission permission={Permissions.listingsManage}><ListingEditorPage /></RequirePermission>} />
+        <Route path="listings/:id" element={<RequirePermission permission={listingAccess}><ListingDetailPage /></RequirePermission>} />
+        <Route path="listings/:id/edit" element={<RequirePermission permission={Permissions.listingsManage}><ListingEditorPage /></RequirePermission>} />
+        <Route path="leads/:id" element={<RequirePermission permission={Permissions.leadsManage}><LeadDetailPage /></RequirePermission>} />
         <Route path="portal" element={<PortalHome />} />
         <Route path="branches" element={<RequirePermission permission={Permissions.branchesView}><BranchesPage /></RequirePermission>} />
         <Route path="team" element={<RequirePermission permission={Permissions.usersView}><TeamPage /></RequirePermission>} />

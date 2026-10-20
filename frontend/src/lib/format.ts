@@ -53,6 +53,9 @@ const labels: Record<string, string> = {
   MoveOut: 'Move-out',
   PestControl: 'Pest control',
   WaterSupply: 'Water supply',
+  ViewingBooked: 'Viewing booked',
+  NoShow: 'No-show',
+  WalkIn: 'Walk-in',
 }
 
 /** A readable label for an API enum value such as 'UnderRenovation' → 'Under renovation'. */

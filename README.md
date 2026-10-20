@@ -3,7 +3,7 @@
 A multi-company property management platform for Nigerian property managers and landlords.
 It follows the design in *Property Management System: Requirements & Technical Design v1.1*.
 
-**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) Phase 3 (properties, units, owners and tenants) the first part of Phase 4 (leases) the first part of Phase 5 (maintenance and vendors), the owner and tenant portals, and documents and photos. No money features yet: invoices, payments and payouts wait for the accountant and tax adviser to sign off the [finance design](https://claude.ai/code/artifact/59369177-0d67-4085-a6e6-054ed378947e).**
+**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) Phase 3 (properties, units, owners and tenants) the first part of Phase 4 (leases) the first part of Phase 5 (maintenance and vendors), the owner and tenant portals, documents and photos, and public listings with enquiries and viewings. No money features yet: invoices, payments and payouts wait for the accountant and tax adviser to sign off the [finance design](https://claude.ai/code/artifact/59369177-0d67-4085-a6e6-054ed378947e).**
 
 ## What works today
 
@@ -37,6 +37,14 @@ It follows the design in *Property Management System: Requirements & Technical D
 - **Private downloads.** Files are stored outside the web root under keys made from ids, and served only through `/api/v1/organizations/{organizationId}/documents/{id}/content`, which checks the signed-in user's access on every request and sends headers that stop the browser running anything in the file.
 - **Shared with portals** when staff tick "share with the owner" or "share with the tenant". Owners see shared files on themselves and on their properties, leases and repairs; tenants see shared files on themselves, their leases and their repairs. Tenants can add photos to their own open repair requests, which staff and the owner then see.
 - **Expiry tracking.** The dashboard lists documents that have expired or expire within 60 days.
+
+### Listings, enquiries and viewings
+
+- **Listings** advertise one vacant unit each: headline, description, asking rent, available-from date, features, a contact phone and an optional agent. Photos are chosen from the property's photos, in order; the first is the cover. A listing needs a description and a photo before it can be published. Only one open listing per unit.
+- **Public pages** need no sign-in: `/to-let/{company}` lists everything a company has published and `/listing/{code}` shows one listing. Codes are random so listings can't be guessed. Only fields built for the public are sent; the street address is hidden unless staff tick "show the street address", and only the photos chosen for a published listing can be fetched. Public calls are rate-limited, enquiries more tightly.
+- **Enquiries** from the public form (with a hidden field that quietly drops spam bots) or added by staff for phone, walk-in or referral contacts. Each new web enquiry is emailed to the listing's agent, else the property manager, else the company admins.
+- **Viewings** are booked against an enquiry with a time (Lagos) and agent, then marked viewed, no-show or cancelled. Enquiries move through New, Contacted, Viewing booked, Applied, Won or Lost.
+- **Who sees what.** `Listings.Manage` creates and publishes; `Leads.Manage` works enquiries. A member whose only listing role is Agent sees just the listings assigned to them and can't reassign them. Starting a lease on the unit closes its listing as let.
 
 ### Owner and tenant portals
 
@@ -115,8 +123,8 @@ Emails (invitations, password resets) are only logged in development. The person
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 73 unit + 88 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
-cd frontend && npm test          # 31 component and client tests
+cd backend && dotnet test        # 81 unit + 91 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd frontend && npm test          # 36 component and client tests
 cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running)
 ```
 
@@ -192,6 +200,18 @@ Each integration test class creates its own database and drops it afterwards.
 | GET | /api/v1/organizations/{organizationId}/documents/{id}/content | Download (`download=true` for an attachment); staff and portal users |
 | GET | /api/v1/portal/owner/documents, /api/v1/portal/tenant/documents | Files shared with the owner or tenant |
 | POST | /api/v1/portal/tenant/maintenance/{id}/photos | A tenant adds a photo to their open repair |
+| GET, POST | /api/v1/listings | Search (`status`, `propertyId`, `unitId`); create a draft |
+| GET, PUT | /api/v1/listings/{id} | |
+| GET, PUT | /api/v1/listings/{id}/photo-options, /photos | The property's photos; set the listing's photos in order |
+| POST | /api/v1/listings/{id}/publish, /unpublish, /close, /reopen | |
+| GET | /api/v1/listings/agents | Members who can handle enquiries |
+| GET, POST | /api/v1/leads | Search (`listingId`, `status`, `open`); add an enquiry |
+| GET | /api/v1/leads/{id} | With its viewings |
+| PUT | /api/v1/leads/{id}/status | Move an enquiry on, with notes |
+| POST | /api/v1/leads/{id}/viewings, /viewings/{viewingId}/outcome | Book a viewing; record how it went |
+| GET | /api/v1/public/organizations/{slug}/listings | Public, rate-limited |
+| GET | /api/v1/public/listings/{code}, /photos/{documentId} | Public, rate-limited |
+| POST | /api/v1/public/listings/{code}/enquiries | Public, 5 a minute per address by default |
 | GET, POST | /api/v1/vendors | Search; create |
 | GET, PUT | /api/v1/vendors/{id} | |
 | PUT | /api/v1/vendors/{id}/active | Deactivate or reactivate |
@@ -219,3 +239,4 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 - Money in the portals (owner statements and payouts, tenant invoices, receipts and online payment), and SMS for portal users.
 - Run a ClamAV daemon in production and set `Storage:ClamAv:Host`; without it uploads are only checked for the EICAR test file.
 - Files are kept on one disk (`Storage:LocalPath`). With more than one API server, use a shared volume or move to cloud storage with short-lived signed links (design 6.13), and back the files up with the database.
+- Listings: a captcha on the enquiry form if spam gets past the hidden field and rate limit, SMS or WhatsApp alerts for new enquiries, syndication to property portals, and a custom domain for the public pages.

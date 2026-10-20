@@ -72,6 +72,20 @@ builder.Services.AddRateLimiter(o =>
             PermitLimit = ctx.RequestServices.GetRequiredService<IConfiguration>().GetValue("RateLimiting:AuthPermitPerMinute", 10),
             Window = TimeSpan.FromMinutes(1),
         }));
+    o.AddPolicy(RateLimitPolicies.Public, ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = ctx.RequestServices.GetRequiredService<IConfiguration>().GetValue("RateLimiting:PublicPermitPerMinute", 120),
+            Window = TimeSpan.FromMinutes(1),
+        }));
+    o.AddPolicy(RateLimitPolicies.Enquiry, ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = ctx.RequestServices.GetRequiredService<IConfiguration>().GetValue("RateLimiting:EnquiryPermitPerMinute", 5),
+            Window = TimeSpan.FromMinutes(1),
+        }));
 });
 
 builder.Services.AddProblemDetails(o => o.CustomizeProblemDetails = ctx =>

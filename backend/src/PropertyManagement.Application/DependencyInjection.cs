@@ -4,6 +4,7 @@ using PropertyManagement.Application.Auditing;
 using PropertyManagement.Application.Branches;
 using PropertyManagement.Application.Documents;
 using PropertyManagement.Application.Leases;
+using PropertyManagement.Application.Listings;
 using PropertyManagement.Application.Maintenance;
 using PropertyManagement.Application.Organizations;
 using PropertyManagement.Application.Owners;
@@ -34,6 +35,9 @@ public static class DependencyInjection
         services.AddScoped<PortalScope>();
         services.AddScoped<PortalService>();
         services.AddScoped<DocumentService>();
+        services.AddScoped<ListingService>();
+        services.AddScoped<LeadService>();
+        services.AddScoped<PublicListingService>();
         return services;
     }
 }

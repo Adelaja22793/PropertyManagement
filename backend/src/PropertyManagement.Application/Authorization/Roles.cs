@@ -26,7 +26,7 @@ public static class Roles
             Permissions.Owners.View, Permissions.Owners.Manage,
             Permissions.Tenants.View, Permissions.Tenants.Create, Permissions.Tenants.Update,
             Permissions.Leases.View, Permissions.Leases.Create, Permissions.Leases.Renew, Permissions.Leases.Terminate, Permissions.Leases.IssueNotice,
-            Permissions.Maintenance.View, Permissions.Maintenance.Manage, Permissions.Listings.Manage,
+            Permissions.Maintenance.View, Permissions.Maintenance.Manage, Permissions.Listings.Manage, Permissions.Listings.Leads,
             Permissions.Documents.View, Permissions.Documents.Upload, Permissions.Documents.Delete,
             Permissions.Finance.InvoicesView, Permissions.Finance.PaymentsView, Permissions.Finance.ReportsView,
         ],
@@ -38,6 +38,7 @@ public static class Roles
             Permissions.Leases.View, Permissions.Leases.Create, Permissions.Leases.Renew, Permissions.Leases.IssueNotice,
             Permissions.Maintenance.View, Permissions.Maintenance.Manage,
             Permissions.Documents.View, Permissions.Documents.Upload,
+            Permissions.Listings.Manage, Permissions.Listings.Leads,
             Permissions.Finance.InvoicesView, Permissions.Finance.PaymentsView,
         ],
         [Accountant] =
@@ -58,7 +59,7 @@ public static class Roles
         ],
         [Agent] =
         [
-            Permissions.Organization.View, Permissions.Properties.View, Permissions.Listings.Manage,
+            Permissions.Organization.View, Permissions.Properties.View, Permissions.Listings.Manage, Permissions.Listings.Leads,
             Permissions.Documents.View, Permissions.Documents.Upload,
         ],
         [MaintenanceStaff] = [Permissions.Organization.View, Permissions.Maintenance.UpdateAssigned],

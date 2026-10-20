@@ -744,3 +744,172 @@ export interface PortalDocument {
   byYou: boolean
   createdAtUtc: string
 }
+
+// Phase 8: listings, enquiries and viewings.
+
+export const ListingStatuses = ['Draft', 'Published', 'Closed'] as const
+export type ListingStatus = (typeof ListingStatuses)[number]
+export type ListingCloseReason = 'Let' | 'Withdrawn'
+
+export interface ListingSummary {
+  id: string
+  publicCode: string
+  headline: string
+  status: ListingStatus
+  closeReason: ListingCloseReason | null
+  propertyId: string
+  propertyName: string
+  unitId: string
+  unitCode: string
+  askingRent: number
+  currency: string
+  billingFrequency: BillingFrequency
+  photoCount: number
+  openLeads: number
+  agentName: string | null
+  publishedAtUtc: string | null
+  updatedAtUtc: string
+}
+
+export interface ListingDetail {
+  id: string
+  publicCode: string
+  organizationSlug: string
+  headline: string
+  description: string | null
+  askingRent: number
+  currency: string
+  billingFrequency: BillingFrequency
+  availableFrom: string | null
+  features: string | null
+  showStreetAddress: boolean
+  contactName: string | null
+  contactPhone: string | null
+  agentUserId: string | null
+  agentName: string | null
+  status: ListingStatus
+  closeReason: ListingCloseReason | null
+  publishedAtUtc: string | null
+  closedAtUtc: string | null
+  propertyId: string
+  propertyName: string
+  propertyAddress: string
+  unitId: string
+  unitCode: string
+  unitType: UnitType
+  bedrooms: number | null
+  bathrooms: number | null
+  unitOccupancy: OccupancyStatus
+  photos: { documentId: string; title: string }[]
+  openLeads: number
+  createdAtUtc: string
+  updatedAtUtc: string
+}
+
+export interface ListingPhotoOption {
+  documentId: string
+  title: string
+  createdAtUtc: string
+}
+
+export interface ListingAgent {
+  userId: string
+  fullName: string
+  email: string
+}
+
+export const LeadStatuses = ['New', 'Contacted', 'ViewingBooked', 'Applied', 'Won', 'Lost'] as const
+export type LeadStatus = (typeof LeadStatuses)[number]
+export const LeadSources = ['Website', 'Phone', 'WalkIn', 'Referral', 'Other'] as const
+export type LeadSource = (typeof LeadSources)[number]
+export type ViewingStatus = 'Scheduled' | 'Completed' | 'NoShow' | 'Cancelled'
+
+export interface LeadSummary {
+  id: string
+  reference: string
+  name: string
+  phone: string | null
+  email: string | null
+  source: LeadSource
+  status: LeadStatus
+  listingId: string
+  listingHeadline: string
+  propertyName: string
+  unitCode: string
+  nextViewingAtUtc: string | null
+  createdAtUtc: string
+  updatedAtUtc: string
+}
+
+export interface Viewing {
+  id: string
+  scheduledAtUtc: string
+  agentUserId: string | null
+  agentName: string | null
+  notes: string | null
+  status: ViewingStatus
+  outcome: string | null
+}
+
+export interface LeadDetail {
+  id: string
+  reference: string
+  name: string
+  phone: string | null
+  email: string | null
+  message: string | null
+  source: LeadSource
+  status: LeadStatus
+  notes: string | null
+  listingId: string
+  listingHeadline: string
+  propertyName: string
+  unitCode: string
+  viewings: Viewing[]
+  createdAtUtc: string
+  updatedAtUtc: string
+}
+
+export interface PublicListingSummary {
+  code: string
+  headline: string
+  askingRent: number
+  currency: string
+  billingFrequency: BillingFrequency
+  unitType: UnitType
+  bedrooms: number | null
+  bathrooms: number | null
+  area: string
+  availableFrom: string | null
+  photoUrl: string | null
+}
+
+export interface PublicOrganization {
+  name: string
+  slug: string
+  contactPhone: string | null
+  contactEmail: string | null
+  listings: PublicListingSummary[]
+}
+
+export interface PublicListing {
+  code: string
+  headline: string
+  description: string | null
+  askingRent: number
+  currency: string
+  billingFrequency: BillingFrequency
+  availableFrom: string | null
+  unitType: UnitType
+  bedrooms: number | null
+  bathrooms: number | null
+  sizeSquareMetres: number | null
+  features: string[]
+  streetAddress: string | null
+  area: string
+  photoUrls: string[]
+  organizationName: string
+  organizationSlug: string
+  contactName: string | null
+  contactPhone: string | null
+}
