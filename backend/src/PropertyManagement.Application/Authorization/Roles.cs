@@ -27,6 +27,7 @@ public static class Roles
             Permissions.Tenants.View, Permissions.Tenants.Create, Permissions.Tenants.Update,
             Permissions.Leases.View, Permissions.Leases.Create, Permissions.Leases.Renew, Permissions.Leases.Terminate, Permissions.Leases.IssueNotice,
             Permissions.Maintenance.View, Permissions.Maintenance.Manage, Permissions.Listings.Manage,
+            Permissions.Documents.View, Permissions.Documents.Upload, Permissions.Documents.Delete,
             Permissions.Finance.InvoicesView, Permissions.Finance.PaymentsView, Permissions.Finance.ReportsView,
         ],
         [PropertyManager] =
@@ -36,6 +37,7 @@ public static class Roles
             Permissions.Tenants.View, Permissions.Tenants.Create, Permissions.Tenants.Update,
             Permissions.Leases.View, Permissions.Leases.Create, Permissions.Leases.Renew, Permissions.Leases.IssueNotice,
             Permissions.Maintenance.View, Permissions.Maintenance.Manage,
+            Permissions.Documents.View, Permissions.Documents.Upload,
             Permissions.Finance.InvoicesView, Permissions.Finance.PaymentsView,
         ],
         [Accountant] =
@@ -45,7 +47,7 @@ public static class Roles
             Permissions.Owners.View, Permissions.Owners.Manage,
             Permissions.Finance.InvoicesView, Permissions.Finance.InvoicesManage,
             Permissions.Finance.PaymentsView, Permissions.Finance.PaymentsRecord,
-            Permissions.Finance.PayoutsCreate, Permissions.Finance.ReportsView,
+            Permissions.Finance.PayoutsCreate, Permissions.Finance.ReportsView, Permissions.Documents.View,
         ],
         [FinanceApprover] =
         [
@@ -54,7 +56,11 @@ public static class Roles
             Permissions.Finance.InvoicesView, Permissions.Finance.PaymentsView,
             Permissions.Finance.PayoutsApprove, Permissions.Finance.ReportsView, Permissions.Audit.View,
         ],
-        [Agent] = [Permissions.Organization.View, Permissions.Properties.View, Permissions.Listings.Manage],
+        [Agent] =
+        [
+            Permissions.Organization.View, Permissions.Properties.View, Permissions.Listings.Manage,
+            Permissions.Documents.View, Permissions.Documents.Upload,
+        ],
         [MaintenanceStaff] = [Permissions.Organization.View, Permissions.Maintenance.UpdateAssigned],
         // Portal roles see only their own records through owner/tenant links, never staff screens.
         [Owner] = [],

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PropertyManagement.Domain.Auditing;
+using PropertyManagement.Domain.Documents;
 using PropertyManagement.Domain.Leases;
 using PropertyManagement.Domain.Maintenance;
 using PropertyManagement.Domain.Organizations;
@@ -41,6 +42,7 @@ public interface IAppDbContext
     DbSet<Vendor> Vendors { get; }
     DbSet<MaintenanceRequest> MaintenanceRequests { get; }
     DbSet<MaintenanceUpdate> MaintenanceUpdates { get; }
+    DbSet<Document> Documents { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

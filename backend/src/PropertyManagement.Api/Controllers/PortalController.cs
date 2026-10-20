@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using PropertyManagement.Api.Authorization;
 using PropertyManagement.Application.Authorization;
+using PropertyManagement.Application.Documents;
 using PropertyManagement.Application.Portal;
 
 namespace PropertyManagement.Api.Controllers;
@@ -9,8 +10,12 @@ namespace PropertyManagement.Api.Controllers;
 [ApiController]
 [Route("api/v1/portal/owner")]
 [RequirePortalRole(Roles.Owner)]
-public sealed class OwnerPortalController(PortalService portal) : ControllerBase
+public sealed class OwnerPortalController(PortalService portal, DocumentService documents) : ControllerBase
 {
+    /// <summary>Documents staff shared with the owner.</summary>
+    [HttpGet("documents")]
+    public Task<IReadOnlyList<PortalDocumentDto>> Documents(CancellationToken ct) => documents.OwnerDocumentsAsync(ct);
+
     [HttpGet]
     public Task<OwnerPortalDto> Home(CancellationToken ct) => portal.OwnerHomeAsync(ct);
 
@@ -34,8 +39,22 @@ public sealed class OwnerPortalController(PortalService portal) : ControllerBase
 [ApiController]
 [Route("api/v1/portal/tenant")]
 [RequirePortalRole(Roles.Tenant)]
-public sealed class TenantPortalController(PortalService portal) : ControllerBase
+public sealed class TenantPortalController(PortalService portal, DocumentService documents) : ControllerBase
 {
+    /// <summary>Documents staff shared with the tenant, and photos they added to their repairs.</summary>
+    [HttpGet("documents")]
+    public Task<IReadOnlyList<PortalDocumentDto>> Documents(CancellationToken ct) => documents.TenantDocumentsAsync(ct);
+
+    [HttpPost("maintenance/{id:guid}/photos")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(DocumentsController.RequestLimit)]
+    [RequestFormLimits(MultipartBodyLengthLimit = DocumentsController.RequestLimit)]
+    public async Task<ActionResult<PortalDocumentDto>> AddPhoto(Guid id, IFormFile? file, CancellationToken ct)
+    {
+        var content = await UploadReader.ReadAsync(file, documents.MaxBytes, ct);
+        return StatusCode(StatusCodes.Status201Created, await documents.TenantRepairPhotoAsync(id, file!.FileName, content, ct));
+    }
+
     [HttpGet]
     public Task<TenantPortalDto> Home(CancellationToken ct) => portal.TenantHomeAsync(ct);
 

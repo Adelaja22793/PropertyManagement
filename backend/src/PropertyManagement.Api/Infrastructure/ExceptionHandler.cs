@@ -24,7 +24,13 @@ public sealed class ExceptionHandler(IProblemDetailsService problems, ILogger<Ex
     {
         var (status, title, code) = exception switch
         {
+            DomainException { Code: "file_too_large" } d => (413, d.Message, d.Code),
+            DomainException { Code: "file_type" } d => (415, d.Message, d.Code),
+            DomainException { Code: "file_rejected" } d => (422, d.Message, d.Code),
+            DomainException { Code: "scan_unavailable" } d => (503, d.Message, d.Code),
             DomainException d => (ConflictCodes.Contains(d.Code) ? 409 : ForbiddenCodes.Contains(d.Code) ? 403 : 400, d.Message, d.Code),
+            BadHttpRequestException { StatusCode: 413 } => (413, "The upload is too large.", "file_too_large"),
+            BadHttpRequestException b => (b.StatusCode, "The request could not be read.", "bad_request"),
             NotFoundException n => (404, n.Message, "not_found"),
             ForbiddenException f => (403, f.Message, "forbidden"),
             OrganizationContextRequiredException o => (400, o.Message, "organization_required"),

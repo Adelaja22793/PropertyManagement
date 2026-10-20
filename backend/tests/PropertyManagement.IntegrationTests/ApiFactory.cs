@@ -20,6 +20,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         "Server=localhost,1433;User Id=sa;Password=Dev_Passw0rd!;TrustServerCertificate=True";
 
     private readonly string _database = $"pms_test_{Guid.NewGuid():N}";
+    private readonly string _files = Path.Combine(Path.GetTempPath(), $"pms_files_{Guid.NewGuid():N}");
 
     public string ConnectionString { get; }
 
@@ -42,6 +43,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["RateLimiting:AuthPermitPerMinute"] = "10000",
             // Tests run the lease schedule themselves, so it never races a test's own changes.
             ["Jobs:Leases:Enabled"] = "false",
+            ["Storage:LocalPath"] = _files,
         }));
         builder.ConfigureTestServices(services =>
         {
@@ -59,6 +61,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     async Task IAsyncLifetime.DisposeAsync()
     {
         await base.DisposeAsync();
+        if (Directory.Exists(_files)) Directory.Delete(_files, recursive: true);
         SqlConnection.ClearAllPools();
         var master = new SqlConnectionStringBuilder(ConnectionString) { InitialCatalog = "master" }.ConnectionString;
         await using var connection = new SqlConnection(master);
