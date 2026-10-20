@@ -3,7 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using PropertyManagement.Api.Infrastructure;
 using PropertyManagement.Application.Abstractions;
 using PropertyManagement.Domain.Auditing;
+using PropertyManagement.Application.Authorization;
 using PropertyManagement.Domain.Organizations;
+using PropertyManagement.Domain.Platform;
 using PropertyManagement.Infrastructure.Persistence;
 
 namespace PropertyManagement.Api.Middleware;
@@ -21,6 +23,9 @@ public sealed class OrganizationContextMiddleware(RequestDelegate next)
     public async Task InvokeAsync(HttpContext context, AppDbContext db, ICurrentOrganization currentOrganization,
         ICurrentUser currentUser, IAuditLogger audit, TwoFactorPolicy twoFactor)
     {
+        // Account endpoints act for the person. They still record the selected organization in audit entries when the
+        // person has access to it, but never refuse because of it.
+        var accountPath = context.Request.Path.StartsWithSegments("/api/v1/auth");
         var fromRoute = context.Request.RouteValues[RouteKey]?.ToString();
         var fromHeader = context.Request.Headers[HeaderName].ToString();
         if (string.IsNullOrEmpty(fromRoute) && string.IsNullOrEmpty(fromHeader))
@@ -62,9 +67,35 @@ public sealed class OrganizationContextMiddleware(RequestDelegate next)
             })
             .SingleOrDefaultAsync(context.RequestAborted);
 
+        if (access is null && await SupportGrantAsync(db, userId, organizationId, context.RequestAborted))
+        {
+            // Platform support with an approved grant (design 4.7): read-only, and every request is in the company's audit log.
+            var readOnly = !HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method) && !accountPath;
+            // Loading their own account isn't a look at the company's data, so it isn't logged.
+            if (!accountPath)
+                await audit.RecordNowAsync(readOnly ? "support.change_blocked" : "support.viewed", nameof(Organization), organizationId.ToString(),
+                    readOnly ? AuditOutcome.Denied : AuditOutcome.Success, new { context.Request.Method, context.Request.Path },
+                    organizationId: organizationId, userId: userId, ct: context.RequestAborted);
+            if (readOnly)
+            {
+                await Problem(context, 403, "Support access is read-only.", "support_read_only");
+                return;
+            }
+            currentOrganization.Set(organizationId, null, [Roles.PlatformSupport], []);
+            await next(context);
+            return;
+        }
+
         // Same answer whether the organization does not exist or the user is not a member: no probing.
         if (access is null || access.OrganizationStatus == OrganizationStatus.Cancelled)
         {
+            // Someone whose access just ended (removed, or a support grant ran out) can still load their account.
+            if (accountPath)
+            {
+                await next(context);
+                return;
+            }
+
             await audit.RecordNowAsync("organization.access_denied", nameof(Organization), organizationId.ToString(),
                 AuditOutcome.Denied, new { context.Request.Path }, organizationId: null, userId: userId,
                 ct: context.RequestAborted);
@@ -80,8 +111,7 @@ public sealed class OrganizationContextMiddleware(RequestDelegate next)
 
         // Admins, accountants and finance approvers past their grace period must turn on two-step sign-in first.
         // Account endpoints stay open so they can.
-        if (!access.TwoFactorEnabled && twoFactor.IsOverdue(access.TwoFactorRequiredSinceUtc, DateTime.UtcNow)
-            && !context.Request.Path.StartsWithSegments("/api/v1/auth"))
+        if (!access.TwoFactorEnabled && twoFactor.IsOverdue(access.TwoFactorRequiredSinceUtc, DateTime.UtcNow) && !accountPath)
         {
             await audit.RecordNowAsync("organization.access_denied", nameof(Organization), organizationId.ToString(),
                 AuditOutcome.Denied, new { context.Request.Path, reason = "two_factor_required" }, organizationId: organizationId,
@@ -92,6 +122,16 @@ public sealed class OrganizationContextMiddleware(RequestDelegate next)
 
         currentOrganization.Set(organizationId, access.MembershipId, access.Roles, access.Branches);
         await next(context);
+    }
+
+    /// <summary>An approved, unexpired grant for a user who is still platform support, in an organization that is not cancelled.</summary>
+    private static Task<bool> SupportGrantAsync(AppDbContext db, Guid userId, Guid organizationId, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        return db.SupportGrants.AnyAsync(g => g.OrganizationId == organizationId && g.RequestedByUserId == userId
+            && g.Status == SupportGrantStatus.Approved && g.ExpiresAtUtc > now
+            && db.Users.Any(u => u.Id == userId && u.IsPlatformAdmin)
+            && db.Organizations.Any(o => o.Id == organizationId && o.Status != OrganizationStatus.Cancelled), ct);
     }
 
     private static Task Problem(HttpContext context, int status, string title, string code)

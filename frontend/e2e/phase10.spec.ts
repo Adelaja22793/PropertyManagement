@@ -1,21 +1,8 @@
-import { createHmac } from 'node:crypto'
 import { expect, test } from '@playwright/test'
+import { totp } from './totp'
 
 const password = 'correct-horse-42'
 const unique = () => `${Date.now()}${Math.floor(Math.random() * 1000)}`
-
-/** The six-digit code an authenticator app shows now for this key (RFC 6238). */
-function totp(sharedKey: string) {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
-  let bits = ''
-  for (const c of sharedKey.replace(/[\s=]/g, '').toUpperCase()) bits += alphabet.indexOf(c).toString(2).padStart(5, '0')
-  const key = Buffer.from(bits.match(/.{8}/g)!.map((b) => parseInt(b, 2)))
-  const counter = Buffer.alloc(8)
-  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 1000 / 30)))
-  const hash = createHmac('sha1', key).update(counter).digest()
-  const offset = hash[hash.length - 1] & 0x0f
-  return String((hash.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0')
-}
 
 test('an admin turns on two-step sign-in and then needs a code to sign in', async ({ page }) => {
   const id = unique()

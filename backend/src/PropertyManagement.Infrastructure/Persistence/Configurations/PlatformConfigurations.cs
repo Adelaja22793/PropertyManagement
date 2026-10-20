@@ -36,6 +36,21 @@ internal sealed class OrganizationSubscriptionConfiguration : IEntityTypeConfigu
     }
 }
 
+internal sealed class SupportGrantConfiguration : IEntityTypeConfiguration<SupportGrant>
+{
+    public void Configure(EntityTypeBuilder<SupportGrant> b)
+    {
+        b.ToTable("SupportGrants");
+        b.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<AppUser>().WithMany().HasForeignKey(x => x.RequestedByUserId).OnDelete(DeleteBehavior.Restrict);
+        b.Property(x => x.Reason).HasMaxLength(SupportGrant.MaxReasonLength).IsRequired();
+        b.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+        b.Property(x => x.RowVersion).IsRowVersion();
+        b.HasIndex(x => new { x.OrganizationId, x.RequestedAtUtc });
+        b.HasIndex(x => new { x.RequestedByUserId, x.OrganizationId, x.Status });
+    }
+}
+
 internal sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
 {
     public void Configure(EntityTypeBuilder<AuditLog> b)

@@ -30,6 +30,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentOrgani
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
     public DbSet<OrganizationSubscription> Subscriptions => Set<OrganizationSubscription>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<SupportGrant> SupportGrants => Set<SupportGrant>();
     public DbSet<Property> Properties => Set<Property>();
     public DbSet<PropertyUnit> Units => Set<PropertyUnit>();
     public DbSet<PropertyOwnership> PropertyOwnerships => Set<PropertyOwnership>();

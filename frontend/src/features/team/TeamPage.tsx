@@ -9,6 +9,7 @@ import { useSession } from '../../app/session'
 import { Permissions, StaffRoles, roleLabel } from '../../lib/permissions'
 import { Badge, Button, Card, Empty, ErrorBox, PageHeader, SelectField, TextField } from '../../components/ui'
 import { formatDate } from '../../lib/format'
+import { SupportAccessCard } from '../support/SupportAccessCard'
 
 export function TeamPage() {
   const { organization, can, me } = useSession()
@@ -125,6 +126,8 @@ export function TeamPage() {
             </ul>
           </Card>
         )}
+
+        {canManage && <SupportAccessCard />}
       </div>
     </>
   )

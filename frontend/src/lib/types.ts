@@ -11,6 +11,27 @@ export interface OrganizationSummary {
   permissions: string[]
   /** Set when one of the member's roles needs two-step sign-in: when that started. */
   twoFactorRequiredSinceUtc: string | null
+  /** Set when this is platform support with an approved grant: read-only access ends at this time. */
+  supportAccessUntilUtc?: string | null
+}
+
+export type SupportGrantStatus = 'Pending' | 'Active' | 'Declined' | 'Revoked' | 'Expired'
+
+/** Read-only access for platform support, approved by the organization's admin (design 4.7). */
+export interface SupportGrant {
+  id: string
+  organizationId: string
+  organizationName: string
+  requestedByName: string
+  requestedByEmail: string
+  reason: string
+  hours: number
+  status: SupportGrantStatus
+  requestedAtUtc: string
+  decidedByName: string | null
+  decidedAtUtc: string | null
+  expiresAtUtc: string | null
+  revokedAtUtc: string | null
 }
 
 export interface Me {

@@ -21,6 +21,7 @@ public interface IAppDbContext
     DbSet<SubscriptionPlan> SubscriptionPlans { get; }
     DbSet<OrganizationSubscription> Subscriptions { get; }
     DbSet<AuditLog> AuditLogs { get; }
+    DbSet<SupportGrant> SupportGrants { get; }
     DbSet<Property> Properties { get; }
     DbSet<PropertyUnit> Units { get; }
     DbSet<PropertyOwnership> PropertyOwnerships { get; }

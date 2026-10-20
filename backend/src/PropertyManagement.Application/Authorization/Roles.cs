@@ -15,6 +15,8 @@ public static class Roles
     public const string MaintenanceStaff = "MaintenanceStaff";
     public const string Owner = "Owner";
     public const string Tenant = "Tenant";
+    /// <summary>A platform support person with an approved, time-limited grant (design 4.7). Never given to a member.</summary>
+    public const string PlatformSupport = "PlatformSupport";
 
     private static readonly Dictionary<string, HashSet<string>> RolePermissions = new()
     {
@@ -64,6 +66,14 @@ public static class Roles
         ],
         [MaintenanceStaff] = [Permissions.Organization.View, Permissions.Maintenance.UpdateAssigned],
         // Portal roles see only their own records through owner/tenant links, never staff screens.
+        // Read-only, and without identity numbers: support sees what the screens show, nothing more.
+        [PlatformSupport] =
+        [
+            Permissions.Organization.View, Permissions.Branches.View, Permissions.Users.View, Permissions.Audit.View,
+            Permissions.Properties.View, Permissions.Owners.View, Permissions.Tenants.View, Permissions.Leases.View,
+            Permissions.Maintenance.View, Permissions.Documents.View,
+            Permissions.Finance.InvoicesView, Permissions.Finance.PaymentsView, Permissions.Finance.ReportsView,
+        ],
         [Owner] = [],
         [Tenant] = [],
     };
@@ -77,7 +87,7 @@ public static class Roles
     /// <summary>Roles whose holders always see the whole organization, whatever their branch scope.</summary>
     public static readonly IReadOnlySet<string> OrganizationWideRoles = new HashSet<string>
     {
-        OrganizationAdmin, Accountant, FinanceApprover,
+        OrganizationAdmin, Accountant, FinanceApprover, PlatformSupport,
     };
 
     /// <summary>Roles that see only the properties assigned to them, unless another role gives wider access.</summary>
