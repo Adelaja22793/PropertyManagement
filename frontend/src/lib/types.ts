@@ -9,6 +9,8 @@ export interface OrganizationSummary {
   status: OrganizationStatus
   roles: string[]
   permissions: string[]
+  /** Set when one of the member's roles needs two-step sign-in: when that started. */
+  twoFactorRequiredSinceUtc: string | null
 }
 
 export interface Me {
@@ -17,6 +19,20 @@ export interface Me {
   fullName: string
   isPlatformAdmin: boolean
   organizations: OrganizationSummary[]
+  twoFactorEnabled: boolean
+  /** Days a member with such a role has to turn two-step sign-in on. */
+  twoFactorGraceDays: number
+}
+
+/** The password was right; the account needs a code next. */
+export interface TwoFactorChallenge {
+  requiresTwoFactor: true
+}
+
+export interface TwoFactorStatus {
+  enabled: boolean
+  required: boolean
+  recoveryCodesLeft: number
 }
 
 export interface OrganizationDetail {
