@@ -180,7 +180,8 @@ public sealed class PropertyService(
     {
         var staffRoles = Roles.StaffRoles.ToArray();
         var userIds = await db.Memberships
-            .Where(m => m.Status == MembershipStatus.Active && m.Roles.Any(r => staffRoles.Contains(r.RoleName)))
+            .Where(m => m.Status == MembershipStatus.Active
+                && m.Roles.Any(r => staffRoles.Contains(r.RoleName) || r.RoleName.StartsWith(CustomRole.KeyPrefix)))
             .Select(m => m.UserId).ToListAsync(ct);
         var people = await users.GetAsync(userIds, ct);
         return people.Values.Select(u => new StaffOptionDto(u.Id, u.FullName)).OrderBy(u => u.FullName).ToList();
@@ -225,7 +226,7 @@ public sealed class PropertyService(
         {
             var staffRoles = Roles.StaffRoles.ToArray();
             var isStaff = await db.Memberships.AnyAsync(m => m.UserId == managerId && m.Status == MembershipStatus.Active
-                && m.Roles.Any(r => staffRoles.Contains(r.RoleName)), ct);
+                && m.Roles.Any(r => staffRoles.Contains(r.RoleName) || r.RoleName.StartsWith(CustomRole.KeyPrefix)), ct);
             if (!isStaff) throw new DomainException("The manager must be an active staff member.", "manager_not_found");
         }
     }

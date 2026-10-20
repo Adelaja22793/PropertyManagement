@@ -18,6 +18,7 @@ public interface IAppDbContext
     DbSet<Branch> Branches { get; }
     DbSet<OrganizationMembership> Memberships { get; }
     DbSet<UserInvitation> Invitations { get; }
+    DbSet<CustomRole> CustomRoles { get; }
     DbSet<SubscriptionPlan> SubscriptionPlans { get; }
     DbSet<OrganizationSubscription> Subscriptions { get; }
     DbSet<AuditLog> AuditLogs { get; }

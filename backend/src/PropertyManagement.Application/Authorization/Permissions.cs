@@ -99,6 +99,15 @@ public static class Permissions
         public const string Leads = "Leads.Manage";
     }
 
+    /// <summary>The permission codes grouped by module, in the order above, for choosing a custom role's permissions.</summary>
+    public static readonly IReadOnlyList<(string Group, IReadOnlyList<string> Codes)> Groups = typeof(Permissions)
+        .GetNestedTypes()
+        .Select(t => (t.Name, (IReadOnlyList<string>)t.GetFields(BindingFlags.Public | BindingFlags.Static)
+            .Where(f => f.IsLiteral && f.FieldType == typeof(string))
+            .Select(f => (string)f.GetRawConstantValue()!)
+            .ToList()))
+        .ToList();
+
     /// <summary>Every permission code defined above.</summary>
     public static readonly IReadOnlySet<string> All = typeof(Permissions)
         .GetNestedTypes()

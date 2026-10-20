@@ -30,13 +30,15 @@ export function DashboardPage() {
     <>
       <PageHeader
         title={`Welcome, ${me?.fullName.split(' ')[0]}`}
-        description={`${organization?.name} · ${organization?.roles.map(roleLabel).join(', ')}`}
+        description={`${organization?.name} · ${organization?.roles.map((r) => roleLabel(r, organization.roleNames)).join(', ')}`}
       />
       <div className="grid gap-4 sm:grid-cols-2">
         {can(Permissions.propertiesView) && (
           <CountCard title="Properties" to="/app/properties" path="/api/v1/properties" text="Buildings and estates you manage." />
         )}
-        {can(Permissions.ownersView) && <CountCard title="Owners" to="/app/owners" path="/api/v1/owners" text="Landlords you manage property for." />}
+        {can(Permissions.ownersView) && (
+          <CountCard title="Owners" to="/app/owners" path="/api/v1/owners" text="Landlords you manage property for." />
+        )}
         {can(Permissions.tenantsView) && (
           <CountCard title="Tenants" to="/app/tenants" path="/api/v1/tenants" text="People and companies renting from you." />
         )}
@@ -60,16 +62,35 @@ export function DashboardPage() {
           />
         )}
         {!can(Permissions.maintenanceView) && can(Permissions.maintenanceUpdateAssigned) && (
-          <CountCard title="My jobs" to="/app/maintenance?filter=mine" path="/api/v1/maintenance?open=true&mine=true" text="Open repair jobs assigned to you." />
+          <CountCard
+            title="My jobs"
+            to="/app/maintenance?filter=mine"
+            path="/api/v1/maintenance?open=true&mine=true"
+            text="Open repair jobs assigned to you."
+          />
         )}
         {can(Permissions.branchesView) && (
-          <Card title="Branches" actions={<Link to="/app/branches" className="text-sm font-medium text-brand-700 hover:underline">Manage</Link>}>
+          <Card
+            title="Branches"
+            actions={
+              <Link to="/app/branches" className="text-sm font-medium text-brand-700 hover:underline">
+                Manage
+              </Link>
+            }
+          >
             <p className="text-3xl font-semibold">{branches.data?.length ?? '–'}</p>
             <p className="mt-1 text-sm text-slate-600">Offices you can limit staff access to.</p>
           </Card>
         )}
         {can(Permissions.usersView) && (
-          <Card title="Team" actions={<Link to="/app/team" className="text-sm font-medium text-brand-700 hover:underline">Manage</Link>}>
+          <Card
+            title="Team"
+            actions={
+              <Link to="/app/team" className="text-sm font-medium text-brand-700 hover:underline">
+                Manage
+              </Link>
+            }
+          >
             <p className="text-3xl font-semibold">{members.data?.length ?? '–'}</p>
             <p className="mt-1 text-sm text-slate-600">Active members of {organization?.name}.</p>
           </Card>
@@ -98,9 +119,19 @@ export function DashboardPage() {
 
 /** A total from a paged list, read with a one-item page. */
 function CountCard({ title, to, path, text }: { title: string; to: string; path: string; text: string }) {
-  const count = useQuery({ queryKey: [title.toLowerCase(), 'count'], queryFn: () => get<Paged<unknown>>(`${path}${path.includes('?') ? '&' : '?'}pageSize=1`) })
+  const count = useQuery({
+    queryKey: [title.toLowerCase(), 'count'],
+    queryFn: () => get<Paged<unknown>>(`${path}${path.includes('?') ? '&' : '?'}pageSize=1`),
+  })
   return (
-    <Card title={title} actions={<Link to={to} className="text-sm font-medium text-brand-700 hover:underline">View</Link>}>
+    <Card
+      title={title}
+      actions={
+        <Link to={to} className="text-sm font-medium text-brand-700 hover:underline">
+          View
+        </Link>
+      }
+    >
       <p className="text-3xl font-semibold">{count.data?.totalCount ?? '–'}</p>
       <p className="mt-1 text-sm text-slate-600">{text}</p>
     </Card>

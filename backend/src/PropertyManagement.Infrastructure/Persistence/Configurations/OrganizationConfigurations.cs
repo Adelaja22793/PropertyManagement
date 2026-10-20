@@ -43,6 +43,21 @@ internal sealed class BranchConfiguration : IEntityTypeConfiguration<Branch>
     }
 }
 
+internal sealed class CustomRoleConfiguration : IEntityTypeConfiguration<CustomRole>
+{
+    public void Configure(EntityTypeBuilder<CustomRole> b)
+    {
+        b.ToTable("CustomRoles");
+        b.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        b.Property(x => x.Name).HasMaxLength(100).IsRequired();
+        b.Property(x => x.Description).HasMaxLength(500);
+        b.Property(x => x.Permissions).HasMaxLength(4000).IsRequired();
+        b.HasIndex(x => new { x.OrganizationId, x.Name }).IsUnique();
+        b.Ignore(x => x.Key);
+        b.Property(x => x.RowVersion).IsRowVersion();
+    }
+}
+
 internal sealed class MembershipConfiguration : IEntityTypeConfiguration<OrganizationMembership>
 {
     public void Configure(EntityTypeBuilder<OrganizationMembership> b)

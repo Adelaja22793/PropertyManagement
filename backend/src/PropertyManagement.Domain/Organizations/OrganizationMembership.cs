@@ -19,14 +19,14 @@ public class OrganizationMembership : IOrganizationScoped
 
     private OrganizationMembership() { }
 
-    public OrganizationMembership(Guid organizationId, Guid userId, IEnumerable<string> roles)
+    public OrganizationMembership(Guid organizationId, Guid userId, IEnumerable<string> roles, Func<string, bool>? customNeedsTwoFactor = null)
     {
         Id = Guid.NewGuid();
         OrganizationId = organizationId;
         UserId = userId;
         Status = MembershipStatus.Active;
         CreatedAtUtc = DateTime.UtcNow;
-        SetRoles(roles);
+        SetRoles(roles, customNeedsTwoFactor);
     }
 
     public Guid Id { get; private set; }
@@ -44,7 +44,8 @@ public class OrganizationMembership : IOrganizationScoped
 
     public bool IsActive => Status == MembershipStatus.Active;
 
-    public void SetRoles(IEnumerable<string> roles)
+    /// <param name="customNeedsTwoFactor">Says whether a custom role needs two-step sign-in. Built-in roles are known here.</param>
+    public void SetRoles(IEnumerable<string> roles, Func<string, bool>? customNeedsTwoFactor = null)
     {
         var distinct = roles.Select(r => r.Trim()).Where(r => r.Length > 0).Distinct().ToList();
         if (distinct.Count == 0) throw new DomainException("A member needs at least one role.");
@@ -52,7 +53,8 @@ public class OrganizationMembership : IOrganizationScoped
         foreach (var role in distinct.Where(r => _roles.All(x => x.RoleName != r)))
             _roles.Add(new MembershipRole(OrganizationId, Id, role));
         // The grace period to turn on two-step sign-in starts when such a role is first given.
-        if (!distinct.Any(TwoFactorRoles.Contains)) TwoFactorRequiredSinceUtc = null;
+        if (!distinct.Any(r => TwoFactorRoles.Contains(r) || (CustomRole.IsCustomKey(r) && customNeedsTwoFactor?.Invoke(r) == true)))
+            TwoFactorRequiredSinceUtc = null;
         else TwoFactorRequiredSinceUtc ??= DateTime.UtcNow;
     }
 

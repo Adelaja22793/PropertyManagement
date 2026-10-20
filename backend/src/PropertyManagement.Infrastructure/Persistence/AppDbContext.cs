@@ -27,6 +27,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentOrgani
     public DbSet<Branch> Branches => Set<Branch>();
     public DbSet<OrganizationMembership> Memberships => Set<OrganizationMembership>();
     public DbSet<UserInvitation> Invitations => Set<UserInvitation>();
+    public DbSet<CustomRole> CustomRoles => Set<CustomRole>();
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
     public DbSet<OrganizationSubscription> Subscriptions => Set<OrganizationSubscription>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();

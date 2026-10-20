@@ -55,10 +55,17 @@ public sealed class OrganizationService(
             })
             .OrderBy(x => x.Name)
             .ToListAsync(ct);
+        var customKeys = rows.SelectMany(r => r.Roles).Where(CustomRole.IsCustomKey).Distinct().ToList();
+        var ids = customKeys.Select(CustomRole.IdFromKey).OfType<Guid>().ToList();
+        var custom = ids.Count == 0 ? [] : await db.CustomRoles.IgnoreQueryFilters().AsNoTracking()
+            .Where(r => ids.Contains(r.Id)).ToListAsync(ct);
+        var granted = custom.ToDictionary(r => r.Key, r => r.GetPermissions());
+        var names = custom.ToDictionary(r => r.Key, r => r.Name);
 
         return rows.Select(r => new OrganizationSummaryDto(r.Id, r.Name, r.Slug, r.Type, r.Status, r.Roles,
-            Roles.PermissionsFor(r.Roles).Order().ToList(),
-            r.TwoFactorRequiredSinceUtc is { } since ? DateTime.SpecifyKind(since, DateTimeKind.Utc) : null)).ToList();
+            Roles.PermissionsFor(r.Roles, granted).Order().ToList(),
+            r.TwoFactorRequiredSinceUtc is { } since ? DateTime.SpecifyKind(since, DateTimeKind.Utc) : null,
+            RoleNames: r.Roles.Where(names.ContainsKey).ToDictionary(k => k, k => names[k]))).ToList();
     }
 
     public async Task<OrganizationDetailDto> GetCurrentAsync(CancellationToken ct)

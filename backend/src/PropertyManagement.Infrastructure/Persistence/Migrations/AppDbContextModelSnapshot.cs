@@ -1271,6 +1271,48 @@ namespace PropertyManagement.Infrastructure.Persistence.Migrations
                     b.ToTable("Branches", (string)null);
                 });
 
+            modelBuilder.Entity("PropertyManagement.Domain.Organizations.CustomRole", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Permissions")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("CustomRoles", (string)null);
+                });
+
             modelBuilder.Entity("PropertyManagement.Domain.Organizations.MembershipBranchScope", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2795,6 +2837,15 @@ namespace PropertyManagement.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("PropertyManagement.Domain.Organizations.Branch", b =>
+                {
+                    b.HasOne("PropertyManagement.Domain.Organizations.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PropertyManagement.Domain.Organizations.CustomRole", b =>
                 {
                     b.HasOne("PropertyManagement.Domain.Organizations.Organization", null)
                         .WithMany()

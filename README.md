@@ -14,6 +14,7 @@ It follows the design in *Property Management System: Requirements & Technical D
 - Branches, and staff limited to the branches they work in.
 - Inviting staff by email with a role (admin, branch manager, property manager, accountant, finance approver, agent, maintenance). Invitations are single-use, expire after 7 days and only work for the invited email.
 - Changing roles and removing members. Removal takes effect on the member's next request. An organization always keeps at least one admin.
+- **Custom roles (design 5).** Admins make their own roles from the permission list on the Roles page, and invite or move members into them. Changes apply on each member's next request. Nobody can give a role, or a member, permissions they don't have themselves. A role with any admin or finance power (managing the team, settings, branches, exports, identity numbers, the audit log, bank account approval or money) needs two-step sign-in, like the built-in admin and finance roles. A role in use, or offered by a pending invitation, can't be deleted. Custom roles follow each member's branch limits and never see the whole company the way admins do.
 - Organization settings (contact details, TIN, VAT number, time zone). Currency is NGN.
 - An append-only audit log of sign-ins, access denials and every sensitive change.
 
@@ -148,8 +149,8 @@ Emails (invitations, password resets) are only logged in development. The person
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 98 unit + 105 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
-cd frontend && npm test          # 45 component and client tests
+cd backend && dotnet test        # 100 unit + 108 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd frontend && npm test          # 47 component and client tests
 cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running; the support test
                                  # marks a user as platform support with docker exec on the mssql container, or PMS_E2E_SQLCMD)
 ```
@@ -177,6 +178,9 @@ Each integration test class creates its own database and drops it afterwards.
 | GET, PUT | /api/v1/organizations/{id} | Settings |
 | GET | /api/v1/organizations/{id}/members | |
 | PATCH, DELETE | /api/v1/organizations/{id}/members/{membershipId} | Change roles or branch scope; remove |
+| GET, POST | /api/v1/roles | Built-in and custom roles with member counts; create a custom role |
+| GET | /api/v1/roles/permissions | Permission codes grouped by module |
+| GET, PUT, DELETE | /api/v1/roles/{id} | One custom role; change; delete when unused |
 | GET, POST | /api/v1/organizations/{id}/invitations | |
 | DELETE | /api/v1/organizations/{id}/invitations/{invitationId} | Cancel |
 | POST | /api/v1/invitations/accept | |
@@ -261,7 +265,6 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 
 - A real email provider (invitations and resets are only logged).
 - Platform admin area and subscription billing. Support access is read-only only; a write option needs a decision on what support may change.
-- Organization-defined custom roles (roles are fixed in code for now).
 - Data protection (design 11.4): erasing a person's data and per-record retention periods wait for the data protection adviser, as do the privacy notice and consent wording. Guarantors are included in their tenant's export but have no export of their own yet. Large exports are built while the admin waits; a background job with an emailed link would suit very large companies.
 - The audit table is append-only in code; also deny UPDATE and DELETE to the app's database login.
 - Data Protection keys (which encrypt identity numbers and sign-in cookies) are stored in the `DataProtectionKeys` table. In production also encrypt the keys themselves, for example with `ProtectKeysWithAzureKeyVault` or a certificate, so a database copy alone can't decrypt NIN or BVN.

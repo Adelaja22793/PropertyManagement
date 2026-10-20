@@ -4,6 +4,7 @@ using PropertyManagement.Api.Infrastructure;
 using PropertyManagement.Application.Abstractions;
 using PropertyManagement.Domain.Auditing;
 using PropertyManagement.Application.Authorization;
+using PropertyManagement.Application.Organizations;
 using PropertyManagement.Domain.Organizations;
 using PropertyManagement.Domain.Platform;
 using PropertyManagement.Infrastructure.Persistence;
@@ -120,7 +121,9 @@ public sealed class OrganizationContextMiddleware(RequestDelegate next)
             return;
         }
 
-        currentOrganization.Set(organizationId, access.MembershipId, access.Roles, access.Branches);
+        var customRoles = await RoleCatalog.LoadAsync(db.CustomRoles.Where(r => r.OrganizationId == organizationId), access.Roles,
+            context.RequestAborted);
+        currentOrganization.Set(organizationId, access.MembershipId, access.Roles, access.Branches, customRoles);
         await next(context);
     }
 

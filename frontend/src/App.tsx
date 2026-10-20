@@ -9,6 +9,7 @@ import { ForgotPasswordPage, ResetPasswordPage } from './features/auth/PasswordP
 import { DashboardPage } from './features/dashboard/DashboardPage'
 import { BranchesPage } from './features/branches/BranchesPage'
 import { TeamPage } from './features/team/TeamPage'
+import { RolesPage } from './features/roles/RolesPage'
 import { AuditPage } from './features/audit/AuditPage'
 import { SettingsPage } from './features/organizations/SettingsPage'
 import { NewOrganizationPage } from './features/organizations/NewOrganizationPage'
@@ -81,6 +82,7 @@ export function App() {
         <Route path="support-desk" element={<SupportDeskPage />} />
         <Route path="branches" element={<RequirePermission permission={Permissions.branchesView}><BranchesPage /></RequirePermission>} />
         <Route path="team" element={<RequirePermission permission={Permissions.usersView}><TeamPage /></RequirePermission>} />
+        <Route path="roles" element={<RequirePermission permission={Permissions.usersView}><RolesPage /></RequirePermission>} />
         <Route path="audit" element={<RequirePermission permission={Permissions.auditView}><AuditPage /></RequirePermission>} />
         <Route path="settings" element={<RequirePermission permission={Permissions.organizationView}><SettingsPage /></RequirePermission>} />
       </Route>

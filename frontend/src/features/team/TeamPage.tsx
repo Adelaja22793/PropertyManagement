@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -6,7 +7,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { del, get, patch, post } from '../../lib/api'
 import type { Branch, CreatedInvitation, Invitation, Member } from '../../lib/types'
 import { useSession } from '../../app/session'
-import { Permissions, StaffRoles, roleLabel } from '../../lib/permissions'
+import { Permissions, roleLabel } from '../../lib/permissions'
+import { customRoleNames, useRoles } from '../roles/roles'
+import type { Role } from '../../lib/types'
 import { Badge, Button, Card, Empty, ErrorBox, PageHeader, SelectField, TextField } from '../../components/ui'
 import { formatDate } from '../../lib/format'
 import { SupportAccessCard } from '../support/SupportAccessCard'
@@ -22,9 +25,15 @@ export function TeamPage() {
     queryFn: () => get<Invitation[]>(`${base}/invitations`),
     enabled: canManage,
   })
-  const branches = useQuery({ queryKey: ['branches'], queryFn: () => get<Branch[]>('/api/v1/branches'), enabled: can(Permissions.branchesView) })
+  const branches = useQuery({
+    queryKey: ['branches'],
+    queryFn: () => get<Branch[]>('/api/v1/branches'),
+    enabled: can(Permissions.branchesView),
+  })
   const branchName = (id: string) => branches.data?.find((b) => b.id === id)?.name ?? 'Unknown branch'
   const [inviting, setInviting] = useState(false)
+  const roles = useRoles()
+  const names = customRoleNames(roles.data)
 
   const changeRole = useMutation({
     mutationFn: ({ member, role }: { member: Member; role: string }) =>
@@ -45,9 +54,16 @@ export function TeamPage() {
       <PageHeader
         title="Team"
         description="Everyone who can sign in to this organization, and what they can do."
-        actions={canManage && !inviting && <Button onClick={() => setInviting(true)}>Invite someone</Button>}
+        actions={
+          <div className="flex gap-2">
+            <Link to="/app/roles" className="rounded-md px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50">
+              Roles
+            </Link>
+            {canManage && !inviting && <Button onClick={() => setInviting(true)}>Invite someone</Button>}
+          </div>
+        }
       />
-      {inviting && <InviteForm base={base} branches={branches.data ?? []} onDone={() => setInviting(false)} />}
+      {inviting && <InviteForm base={base} branches={branches.data ?? []} roles={roles.data ?? []} onDone={() => setInviting(false)} />}
 
       <div className="space-y-6">
         <Card title="Members">
@@ -76,11 +92,7 @@ export function TeamPage() {
                         value={m.roles[0]}
                         onChange={(e) => changeRole.mutate({ member: m, role: e.target.value })}
                       >
-                        {StaffRoles.map((r) => (
-                          <option key={r.value} value={r.value}>
-                            {r.label}
-                          </option>
-                        ))}
+                        <RoleOptions roles={roles.data} current={m.roles[0]} />
                       </select>
                       <Button
                         variant="danger"
@@ -92,7 +104,7 @@ export function TeamPage() {
                       </Button>
                     </>
                   ) : (
-                    m.roles.map((r) => <Badge key={r}>{roleLabel(r)}</Badge>)
+                    m.roles.map((r) => <Badge key={r}>{roleLabel(r, names)}</Badge>)
                   )}
                 </div>
               </li>
@@ -110,7 +122,7 @@ export function TeamPage() {
                   <div>
                     <p className="text-sm font-medium">{i.email}</p>
                     <p className="text-xs text-slate-500">
-                      {roleLabel(i.role)} · sent {formatDate(i.createdAtUtc)}
+                      {roleLabel(i.role, names)} · sent {formatDate(i.createdAtUtc)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -140,7 +152,7 @@ const inviteSchema = z.object({
 })
 type InviteValues = z.infer<typeof inviteSchema>
 
-function InviteForm({ base, branches, onDone }: { base: string; branches: Branch[]; onDone: () => void }) {
+function InviteForm({ base, branches, roles, onDone }: { base: string; branches: Branch[]; roles: Role[]; onDone: () => void }) {
   const queryClient = useQueryClient()
   const [created, setCreated] = useState<CreatedInvitation | null>(null)
   const { register, handleSubmit, formState } = useForm<InviteValues>({
@@ -164,7 +176,12 @@ function InviteForm({ base, branches, onDone }: { base: string; branches: Branch
             Send this link to {created.invitation.email}. It works once and expires in 7 days. It won't be shown again.
           </p>
           <div className="mt-3 flex gap-2">
-            <input readOnly value={link} aria-label="Invitation link" className="min-w-0 flex-1 rounded-md bg-slate-50 px-3 py-2 font-mono text-xs ring-1 ring-slate-200" />
+            <input
+              readOnly
+              value={link}
+              aria-label="Invitation link"
+              className="min-w-0 flex-1 rounded-md bg-slate-50 px-3 py-2 font-mono text-xs ring-1 ring-slate-200"
+            />
             <Button variant="secondary" onClick={() => navigator.clipboard?.writeText(link)}>
               Copy
             </Button>
@@ -185,11 +202,7 @@ function InviteForm({ base, branches, onDone }: { base: string; branches: Branch
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField label="Email" type="email" {...register('email')} error={formState.errors.email?.message} />
             <SelectField label="Role" {...register('role')}>
-              {StaffRoles.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
+              <RoleOptions roles={roles} />
             </SelectField>
           </div>
           {branches.length > 0 && (
@@ -216,5 +229,30 @@ function InviteForm({ base, branches, onDone }: { base: string; branches: Branch
         </form>
       </Card>
     </div>
+  )
+}
+
+/** Built-in roles, then the organization's own. Keeps the member's current role listed while the roles load. */
+function RoleOptions({ roles, current }: { roles: Role[] | undefined; current?: string }) {
+  if (!roles) return current ? <option value={current}>{roleLabel(current)}</option> : null
+  const builtIn = roles.filter((r) => !r.isCustom)
+  const custom = roles.filter((r) => r.isCustom)
+  return (
+    <>
+      {builtIn.map((r) => (
+        <option key={r.key} value={r.key}>
+          {r.name}
+        </option>
+      ))}
+      {custom.length > 0 && (
+        <optgroup label="Your roles">
+          {custom.map((r) => (
+            <option key={r.key} value={r.key}>
+              {r.name}
+            </option>
+          ))}
+        </optgroup>
+      )}
+    </>
   )
 }

@@ -86,7 +86,7 @@ public sealed class TestClient
     /// <summary>Invites a new person with a role, and returns them signed in to this organization.</summary>
     public async Task<TestClient> AddMemberAsync(ApiFactory factory, string role, params Guid[] branchIds)
     {
-        var email = $"{role.ToLowerInvariant()}-{Guid.NewGuid():N}@example.com";
+        var email = $"{new string(role.Where(char.IsLetter).ToArray()).ToLowerInvariant()}-{Guid.NewGuid():N}@example.com";
         var (_, token) = await InviteAsync(email, role, branchIds);
         return await RegisterWithInvitationAsync(factory, email, token);
     }
