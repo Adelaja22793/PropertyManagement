@@ -11,6 +11,7 @@ import { Badge, Button, Card, DetailList, ErrorBox, PageHeader } from '../../com
 import { PropertyForm } from './PropertyForm'
 import { UnitsPanel } from './UnitsPanel'
 import { OwnershipPanel } from './OwnershipPanel'
+import { LeasesPanel } from '../leases/LeasesPage'
 
 export function PropertyDetailPage() {
   const { id = '' } = useParams()
@@ -89,6 +90,9 @@ export function PropertyDetailPage() {
           />
         </Card>
         <UnitsPanel propertyId={p.id} archived={archived} />
+        {can(Permissions.leasesView) && (
+          <LeasesPanel filter={`propertyId=${p.id}`} newLeaseQuery={archived ? undefined : `propertyId=${p.id}`} showProperty={false} />
+        )}
         <OwnershipPanel propertyId={p.id} archived={archived} />
       </div>
     </>

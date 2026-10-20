@@ -4,6 +4,7 @@ using PropertyManagement.Application.Authorization;
 using PropertyManagement.Application.Common;
 using PropertyManagement.Domain.Common;
 using PropertyManagement.Domain.Organizations;
+using PropertyManagement.Domain.Leases;
 using PropertyManagement.Domain.Properties;
 
 namespace PropertyManagement.Application.Properties;
@@ -113,6 +114,9 @@ public sealed class PropertyService(
         var (unit, property) = await LoadUnitAsync(unitId, ct);
         property.EnsureNotArchived();
         var before = ToDto(unit, property.Code);
+        if (request.OccupancyStatus != unit.OccupancyStatus
+            && await db.Leases.AnyAsync(l => l.UnitId == unit.Id && l.Status == LeaseStatus.Active, ct))
+            throw new DomainException("This unit's occupancy comes from its lease. End or renew the lease instead.", "unit_has_lease");
         unit.Update(request.ToDetails(), request.OccupancyStatus);
         await EnsureUniqueUnitCodeAsync(property.Id, unit.Code, unit.Id, ct);
         audit.Record("unit.updated", nameof(PropertyUnit), unit.Id.ToString(), details: new { before, after = ToDto(unit, property.Code) });
@@ -123,6 +127,8 @@ public sealed class PropertyService(
     public async Task<UnitDto> ArchiveUnitAsync(Guid unitId, CancellationToken ct)
     {
         var (unit, property) = await LoadUnitAsync(unitId, ct);
+        if (await db.Leases.AnyAsync(l => l.UnitId == unit.Id && l.Status == LeaseStatus.Active, ct))
+            throw new DomainException("A unit with an active lease can't be archived.", "unit_has_lease");
         unit.Archive();
         audit.Record("unit.archived", nameof(PropertyUnit), unit.Id.ToString(), details: new { Property = property.Code, unit.Code });
         await db.SaveChangesAsync(ct);

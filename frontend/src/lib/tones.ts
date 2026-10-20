@@ -19,6 +19,14 @@ const tones: Record<string, Tone> = {
   Pending: 'amber',
   Passed: 'green',
   Concern: 'amber',
+  Draft: 'slate',
+  Upcoming: 'slate',
+  Expiring: 'amber',
+  HoldingOver: 'red',
+  Renewed: 'slate',
+  Ended: 'slate',
+  Terminated: 'slate',
+  Cancelled: 'slate',
 }
 
 export function statusTone(status: string): Tone {

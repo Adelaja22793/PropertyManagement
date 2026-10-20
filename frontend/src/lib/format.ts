@@ -44,6 +44,9 @@ const labels: Record<string, string> = {
   OnReceipt: 'On receipt',
   ByPeriod: 'By period',
   Biannual: 'Twice a year',
+  HoldingOver: 'Holding over',
+  OneOff: 'One-off (move-in)',
+  EachPeriod: 'Every billing period',
 }
 
 /** A readable label for an API enum value such as 'UnderRenovation' → 'Under renovation'. */

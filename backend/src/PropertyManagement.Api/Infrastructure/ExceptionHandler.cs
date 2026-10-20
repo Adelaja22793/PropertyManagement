@@ -13,7 +13,8 @@ public sealed class ExceptionHandler(IProblemDetailsService problems, ILogger<Ex
     [
         "already_member", "invitation_pending", "duplicate_branch", "last_admin", "duplicate_code", "duplicate_owner",
         "duplicate_tenant", "approval_pending", "already_decided", "agreement_overlap", "portal_exists", "unit_occupied",
-        "archived",
+        "archived", "lease_overlap", "lease_not_draft", "lease_not_active", "renewal_exists", "unit_has_lease",
+        "guarantor_in_use",
     ];
 
     /// <summary>Rules about who may act, rather than about the data.</summary>
@@ -28,6 +29,9 @@ public sealed class ExceptionHandler(IProblemDetailsService problems, ILogger<Ex
             ForbiddenException f => (403, f.Message, "forbidden"),
             OrganizationContextRequiredException o => (400, o.Message, "organization_required"),
             DbUpdateConcurrencyException => (409, "This record was changed by someone else. Reload and try again.", "concurrency"),
+            // Two requests raced for the same unique value (such as the next lease number).
+            DbUpdateException u when u.InnerException?.Message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase) == true =>
+                (409, "Someone else saved a change at the same moment. Try again.", "conflict"),
             CrossOrganizationWriteException => (403, "You do not have access to this record.", "forbidden"),
             UnauthorizedAccessException => (401, "Sign in to continue.", "unauthenticated"),
             _ => (500, "Something went wrong. Please try again.", "server_error"),

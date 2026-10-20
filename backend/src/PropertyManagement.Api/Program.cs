@@ -22,6 +22,8 @@ builder.Services.AddInfrastructure();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 builder.Services.AddScoped<IRequestInfo, HttpRequestInfo>();
+builder.Services.AddSingleton<LeaseOccupancyJob>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<LeaseOccupancyJob>());
 
 builder.Services
     .AddIdentity<AppUser, IdentityRole<Guid>>(o =>

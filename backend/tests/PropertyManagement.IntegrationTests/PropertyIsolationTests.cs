@@ -123,6 +123,30 @@ public sealed class PropertyIsolationTests(ApiFactory factory) : IClassFixture<A
         Assert.NotEqual(_xyzProperty, id);
     }
 
+    [Fact]
+    public async Task Cannot_read_change_or_link_to_another_organizations_leases()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var xyzUnit = await _xyz.CreateUnitAsync(_xyzProperty, $"L{Guid.NewGuid().ToString()[..4]}");
+        var xyzLease = (await _xyz.CreateLeaseAsync(xyzUnit, _xyzTenant, today)).GetProperty("id").GetGuid();
+
+        (await _abc.Http.GetAsync($"/api/v1/leases/{xyzLease}")).ShouldBe(HttpStatusCode.NotFound);
+        Assert.Equal(0, (await _abc.GetAsync($"/api/v1/leases?unitId={xyzUnit}")).GetProperty("totalCount").GetInt32());
+        (await _abc.Http.PostAsync($"/api/v1/leases/{xyzLease}/activate", null)).ShouldBe(HttpStatusCode.NotFound);
+        (await _abc.Http.PostAsJsonAsync($"/api/v1/leases/{xyzLease}/end", new { moveOutDate = today, reason = "x" }))
+            .ShouldBe(HttpStatusCode.NotFound);
+        (await _abc.Http.PostAsJsonAsync($"/api/v1/leases/{xyzLease}/renew", new { endDate = today.AddYears(3), rentAmount = 1m }))
+            .ShouldBe(HttpStatusCode.NotFound);
+
+        // A lease on XYZ's unit, or naming XYZ's tenant on ABC's own unit, is refused as not found.
+        var abcTenant = await _abc.CreateTenantAsync("ABC Tenant");
+        var abcUnit = await _abc.CreateUnitAsync(_abcProperty, $"L{Guid.NewGuid().ToString()[..4]}");
+        (await _abc.Http.PostAsJsonAsync("/api/v1/leases", TestClient.LeaseBody(xyzUnit, [abcTenant], today), TestClient.Json))
+            .ShouldBe(HttpStatusCode.NotFound);
+        (await _abc.Http.PostAsJsonAsync("/api/v1/leases", TestClient.LeaseBody(abcUnit, [_xyzTenant], today), TestClient.Json))
+            .ShouldBe(HttpStatusCode.NotFound);
+    }
+
     private string Fill(string template) => template
         .Replace("{p}", _xyzProperty.ToString()).Replace("{u}", _xyzUnit.ToString())
         .Replace("{o}", _xyzOwner.ToString()).Replace("{t}", _xyzTenant.ToString());

@@ -67,6 +67,22 @@ public class PropertyUnit : IOrganizationScoped
         OccupancyStatus = occupancy;
     }
 
+    /// <summary>
+    /// Sets occupancy from the unit's leases. A lease that holds the unit today makes it occupied, and one that starts
+    /// later makes it reserved. With neither, a unit that leases had marked occupied or reserved becomes vacant;
+    /// a status staff set by hand (such as unavailable) is left alone.
+    /// </summary>
+    public bool ApplyLeaseOccupancy(bool heldToday, bool heldLater)
+    {
+        var next = heldToday ? OccupancyStatus.Occupied
+            : heldLater ? OccupancyStatus.Reserved
+            : OccupancyStatus is OccupancyStatus.Occupied or OccupancyStatus.Reserved ? OccupancyStatus.Vacant
+            : OccupancyStatus;
+        if (next == OccupancyStatus) return false;
+        OccupancyStatus = next;
+        return true;
+    }
+
     public void Archive()
     {
         if (IsArchived) throw new DomainException("This unit is already archived.", "archived");

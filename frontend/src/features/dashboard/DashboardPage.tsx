@@ -7,7 +7,7 @@ import { Permissions, roleLabel } from '../../lib/permissions'
 import { Card, PageHeader } from '../../components/ui'
 
 const comingNext = [
-  { phase: 'Phase 4', items: 'Leases, rent invoices, payments, receipts and bank matching' },
+  { phase: 'Phase 4', items: 'Rent invoices, payments, receipts and bank matching, once the finance design is signed off' },
   { phase: 'Phase 5', items: 'Owner statements, payouts, expenses and maintenance' },
   { phase: 'Phase 6', items: 'Owner and tenant portals, service charges and reports' },
 ]
@@ -38,6 +38,17 @@ export function DashboardPage() {
         {can(Permissions.ownersView) && <CountCard title="Owners" to="/app/owners" path="/api/v1/owners" text="Landlords you manage property for." />}
         {can(Permissions.tenantsView) && (
           <CountCard title="Tenants" to="/app/tenants" path="/api/v1/tenants" text="People and companies renting from you." />
+        )}
+        {can(Permissions.leasesView) && (
+          <CountCard title="Leases" to="/app/leases" path="/api/v1/leases" text="Every lease, from draft to ended." />
+        )}
+        {can(Permissions.leasesView) && (
+          <CountCard
+            title="Ending in 90 days"
+            to="/app/leases?filter=ending"
+            path="/api/v1/leases?endingWithinDays=90"
+            text="Active leases to renew or wind down, including any past their end date."
+          />
         )}
         {can(Permissions.branchesView) && (
           <Card title="Branches" actions={<Link to="/app/branches" className="text-sm font-medium text-brand-700 hover:underline">Manage</Link>}>
@@ -70,7 +81,7 @@ export function DashboardPage() {
 
 /** A total from a paged list, read with a one-item page. */
 function CountCard({ title, to, path, text }: { title: string; to: string; path: string; text: string }) {
-  const count = useQuery({ queryKey: [title.toLowerCase(), 'count'], queryFn: () => get<Paged<unknown>>(`${path}?pageSize=1`) })
+  const count = useQuery({ queryKey: [title.toLowerCase(), 'count'], queryFn: () => get<Paged<unknown>>(`${path}${path.includes('?') ? '&' : '?'}pageSize=1`) })
   return (
     <Card title={title} actions={<Link to={to} className="text-sm font-medium text-brand-700 hover:underline">View</Link>}>
       <p className="text-3xl font-semibold">{count.data?.totalCount ?? '–'}</p>
