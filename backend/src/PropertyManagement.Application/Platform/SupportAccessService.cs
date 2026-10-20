@@ -39,7 +39,8 @@ public sealed class SupportAccessService(
     IUserDirectory users,
     IEmailSender email,
     IAuditLogger audit,
-    IClock clock)
+    IClock clock,
+    ICrossOrganizationAccess crossOrganization)
 {
     /// <summary>Asks an organization, found by its web address name, for access. The caller must already be checked as platform support.</summary>
     public async Task<SupportGrantDto> RequestAsync(RequestSupportAccessRequest request, CancellationToken ct)
@@ -152,7 +153,9 @@ public sealed class SupportAccessService(
 
     private async Task NotifyAdminsAsync(Guid organizationId, string organizationName, SupportGrant grant, CancellationToken ct)
     {
-        var adminIds = await db.Memberships.IgnoreQueryFilters()
+        List<Guid> adminIds;
+        using (crossOrganization.Allow())
+            adminIds = await db.Memberships.IgnoreQueryFilters()
             .Where(m => m.OrganizationId == organizationId && m.Status == MembershipStatus.Active
                 && m.Roles.Any(r => r.RoleName == Roles.OrganizationAdmin))
             .Select(m => m.UserId).ToListAsync(ct);

@@ -26,7 +26,8 @@ public sealed class TwoFactorController(
     AppDbContext db,
     IAuditLogger audit,
     IEmailSender email,
-    ICurrentUser currentUser) : ControllerBase
+    ICurrentUser currentUser,
+    ICrossOrganizationAccess crossOrganization) : ControllerBase
 {
     private const string Issuer = "Property Management";
     private const int RecoveryCodeCount = 10;
@@ -106,9 +107,12 @@ public sealed class TwoFactorController(
         await users.FindByIdAsync(currentUser.RequireUserId().ToString()) ?? throw new UnauthorizedAccessException();
 
     /// <summary>True when any active membership holds a role that needs two-step sign-in.</summary>
-    private Task<bool> IsRequiredAsync(Guid userId, CancellationToken ct) =>
-        db.Memberships.IgnoreQueryFilters()
+    private async Task<bool> IsRequiredAsync(Guid userId, CancellationToken ct)
+    {
+        using var _ = crossOrganization.Allow();
+        return await db.Memberships.IgnoreQueryFilters()
             .AnyAsync(m => m.UserId == userId && m.Status == MembershipStatus.Active && m.TwoFactorRequiredSinceUtc != null, ct);
+    }
 
     private Task<bool> VerifyAsync(AppUser user, string code) =>
         users.VerifyTwoFactorTokenAsync(user, users.Options.Tokens.AuthenticatorTokenProvider, AuthController.CleanCode(code));

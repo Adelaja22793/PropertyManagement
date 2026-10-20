@@ -21,7 +21,8 @@ public sealed class PublicListingService(
     IEmailSender email,
     IFileStore files,
     IAuditLogger audit,
-    IClock clock)
+    IClock clock,
+    ICrossOrganizationAccess crossOrganization)
 {
     public async Task<PublicOrganizationDto> OrganizationAsync(string slug, CancellationToken ct)
     {
@@ -80,6 +81,7 @@ public sealed class PublicListingService(
     {
         if (string.IsNullOrWhiteSpace(code) || code.Length > 20) throw new NotFoundException("Listing");
         // The one query that looks across organizations: it finds the listing's owner, then everything else is scoped to it.
+        using var _ = crossOrganization.Allow();
         var listing = await db.Listings.IgnoreQueryFilters().Include(l => l.Photos)
             .Where(l => l.PublicCode == code && l.Status == ListingStatus.Published)
             .Where(l => db.Organizations.Any(o => o.Id == l.OrganizationId && o.Status == OrganizationStatus.Active))
