@@ -8,6 +8,7 @@ import type { OrganizationDetail } from '../../lib/types'
 import { useSession } from '../../app/session'
 import { Permissions } from '../../lib/permissions'
 import { Button, Card, ErrorBox, PageHeader, TextField } from '../../components/ui'
+import { DataExportCard } from '../exports/DataExportCard'
 
 const optional = (max: number) => z.string().trim().max(max)
 const schema = z.object({
@@ -53,7 +54,10 @@ export function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" description="Your organization's profile. Tax numbers appear on invoices and receipts in later phases." />
+      <PageHeader
+        title="Settings"
+        description="Your organization's profile. Tax numbers appear on invoices and receipts in later phases."
+      />
       <Card>
         <ErrorBox error={detail.error ?? save.error} />
         {detail.data && (
@@ -90,6 +94,11 @@ export function SettingsPage() {
           </form>
         )}
       </Card>
+      {can(Permissions.dataExport) && (
+        <div className="mt-6">
+          <DataExportCard />
+        </div>
+      )}
     </>
   )
 }

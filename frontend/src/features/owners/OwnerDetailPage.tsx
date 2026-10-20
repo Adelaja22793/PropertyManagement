@@ -12,6 +12,7 @@ import { OwnerForm } from './OwnerForm'
 import { BankAccountsPanel } from './BankAccountsPanel'
 import { AgreementsPanel } from './AgreementsPanel'
 import { DocumentsPanel } from '../documents/DocumentsPanel'
+import { ExportButton } from '../exports/ExportButton'
 
 export function OwnerDetailPage() {
   const { id = '' } = useParams()
@@ -43,12 +44,16 @@ export function OwnerDetailPage() {
         title={o.name}
         description={`${o.type} owner`}
         actions={
-          canManage &&
-          !editing && (
-            <Button variant="secondary" onClick={() => setEditing(true)}>
-              Edit
-            </Button>
-          )
+          <div className="flex flex-wrap items-start gap-2">
+            {can(Permissions.dataExport) && (
+              <ExportButton path={`/api/v1/exports/owners/${o.id}`} fallbackName="owner-data.zip" label="Download their data" />
+            )}
+            {canManage && !editing && (
+              <Button variant="secondary" onClick={() => setEditing(true)}>
+                Edit
+              </Button>
+            )}
+          </div>
         }
       />
       {editing && <OwnerForm owner={o} onDone={() => setEditing(false)} />}

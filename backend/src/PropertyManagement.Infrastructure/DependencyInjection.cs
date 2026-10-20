@@ -28,6 +28,7 @@ public static class DependencyInjection
         services.AddScoped<IUserLookup>(sp => sp.GetRequiredService<UserDirectory>());
         services.AddSingleton<IEmailSender, LoggingEmailSender>();
         services.AddSingleton<IFileStore, LocalFileStore>();
+        services.AddScoped<Application.Exports.IDataExporter, DataExporter>();
         services.AddSingleton<IMalwareScanner, ConfiguredMalwareScanner>();
 
         // Keys live in the database so every API instance can read what another encrypted. In production also

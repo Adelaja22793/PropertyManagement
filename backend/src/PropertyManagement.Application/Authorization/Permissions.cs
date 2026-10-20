@@ -28,6 +28,12 @@ public static class Permissions
         public const string View = "Audit.View";
     }
 
+    public static class Data
+    {
+        /// <summary>Download all of the organization's data, or everything held about one person (design 4.8 and 11.4).</summary>
+        public const string Export = "Data.Export";
+    }
+
     public static class Properties
     {
         public const string View = "Properties.View";

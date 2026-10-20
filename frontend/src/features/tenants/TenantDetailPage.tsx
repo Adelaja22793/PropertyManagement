@@ -12,6 +12,7 @@ import { KycPanel } from './KycPanel'
 import { GuarantorsPanel } from './GuarantorsPanel'
 import { ScreeningPanel } from './ScreeningPanel'
 import { DocumentsPanel } from '../documents/DocumentsPanel'
+import { ExportButton } from '../exports/ExportButton'
 import { LeasesPanel } from '../leases/LeasesPage'
 
 export function TenantDetailPage() {
@@ -45,12 +46,16 @@ export function TenantDetailPage() {
         title={t.name}
         description={company ? 'Company tenant' : 'Individual tenant'}
         actions={
-          canUpdate &&
-          !editing && (
-            <Button variant="secondary" onClick={() => setEditing(true)}>
-              Edit
-            </Button>
-          )
+          <div className="flex flex-wrap items-start gap-2">
+            {can(Permissions.dataExport) && (
+              <ExportButton path={`/api/v1/exports/tenants/${t.id}`} fallbackName="tenant-data.zip" label="Download their data" />
+            )}
+            {canUpdate && !editing && (
+              <Button variant="secondary" onClick={() => setEditing(true)}>
+                Edit
+              </Button>
+            )}
+          </div>
         }
       />
       {editing && <TenantForm tenant={t} onDone={() => setEditing(false)} />}
