@@ -1,0 +1,20 @@
+using Microsoft.Extensions.DependencyInjection;
+using PropertyManagement.Application.Abstractions;
+using PropertyManagement.Application.Auditing;
+using PropertyManagement.Application.Branches;
+using PropertyManagement.Application.Organizations;
+
+namespace PropertyManagement.Application;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddApplication(this IServiceCollection services)
+    {
+        services.AddSingleton<IClock, SystemClock>();
+        services.AddScoped<OrganizationService>();
+        services.AddScoped<MembershipService>();
+        services.AddScoped<BranchService>();
+        services.AddScoped<AuditQueryService>();
+        return services;
+    }
+}
