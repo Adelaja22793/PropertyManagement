@@ -34,6 +34,7 @@ const LeadDetailPage = lazy(() => import('./features/listings/LeadDetailPage').t
 const PublicCompanyPage = lazy(() => import('./features/public/PublicPages').then((m) => ({ default: m.PublicCompanyPage })))
 const PublicListingPage = lazy(() => import('./features/public/PublicPages').then((m) => ({ default: m.PublicListingPage })))
 const ReportsPage = lazy(() => import('./features/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })))
+const AccountSecurityPage = lazy(() => import('./features/account/AccountSecurityPage').then((m) => ({ default: m.AccountSecurityPage })))
 const VendorsPage = lazy(() => import('./features/maintenance/VendorsPage').then((m) => ({ default: m.VendorsPage })))
 
 const maintenanceAccess = [Permissions.maintenanceView, Permissions.maintenanceUpdateAssigned]
@@ -75,6 +76,7 @@ export function App() {
         <Route path="leads/:id" element={<RequirePermission permission={Permissions.leadsManage}><LeadDetailPage /></RequirePermission>} />
         <Route path="reports" element={<RequirePermission permission={reportAccess}><ReportsPage /></RequirePermission>} />
         <Route path="portal" element={<PortalHome />} />
+        <Route path="security" element={<AccountSecurityPage />} />
         <Route path="branches" element={<RequirePermission permission={Permissions.branchesView}><BranchesPage /></RequirePermission>} />
         <Route path="team" element={<RequirePermission permission={Permissions.usersView}><TeamPage /></RequirePermission>} />
         <Route path="audit" element={<RequirePermission permission={Permissions.auditView}><AuditPage /></RequirePermission>} />

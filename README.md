@@ -3,12 +3,13 @@
 A multi-company property management platform for Nigerian property managers and landlords.
 It follows the design in *Property Management System: Requirements & Technical Design v1.1*.
 
-**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) Phase 3 (properties, units, owners and tenants) the first part of Phase 4 (leases) the first part of Phase 5 (maintenance and vendors), the owner and tenant portals, documents and photos, public listings with enquiries and viewings, and operational reports. No money features yet: invoices, payments and payouts wait for the accountant and tax adviser to sign off the [finance design](https://claude.ai/code/artifact/59369177-0d67-4085-a6e6-054ed378947e).**
+**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) Phase 3 (properties, units, owners and tenants) the first part of Phase 4 (leases) the first part of Phase 5 (maintenance and vendors), the owner and tenant portals, documents and photos, public listings with enquiries and viewings, operational reports, and two-step sign-in. No money features yet: invoices, payments and payouts wait for the accountant and tax adviser to sign off the [finance design](https://claude.ai/code/artifact/59369177-0d67-4085-a6e6-054ed378947e).**
 
 ## What works today
 
 - Sign up as a management company or a self-managing landlord. The founder becomes Organization Admin and the organization starts a 30-day trial.
 - Sign in and out, with lockout after 5 wrong passwords, rate-limited sign-in endpoints and password reset.
+- Two-step sign-in with an authenticator app (design 11.1). Anyone can turn it on under Security; Organization Admins, Accountants and Finance Approvers must. They get a reminder banner for a grace period (7 days by default, `Security:TwoFactorGraceDays`), then only the Security page stays open until it is on. Ten single-use recovery codes cover a lost phone, and the owner is emailed whenever it is turned on or off or a recovery code is used.
 - One login can belong to several organizations and switch between them.
 - Branches, and staff limited to the branches they work in.
 - Inviting staff by email with a role (admin, branch manager, property manager, accountant, finance approver, agent, maintenance). Invitations are single-use, expire after 7 days and only work for the invited email.
@@ -131,8 +132,8 @@ Emails (invitations, password resets) are only logged in development. The person
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 90 unit + 95 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
-cd frontend && npm test          # 39 component and client tests
+cd backend && dotnet test        # 92 unit + 98 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd frontend && npm test          # 43 component and client tests
 cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running)
 ```
 
@@ -145,6 +146,9 @@ Each integration test class creates its own database and drops it afterwards.
 | POST | /api/v1/auth/register | New organization, or join with `invitationToken` |
 | POST | /api/v1/auth/login, /logout | Cookie session |
 | GET | /api/v1/auth/me | User and organizations with roles and permissions |
+| POST | /api/v1/auth/login/two-factor, /login/recovery-code | Second sign-in step after `login` returns `requiresTwoFactor` |
+| GET | /api/v1/auth/two-factor | Whether it is on, required, and recovery codes left |
+| POST | /api/v1/auth/two-factor/setup, /enable, /recovery-codes, /disable | Set up the app, turn on with a code, new codes, turn off with the password |
 | POST | /api/v1/auth/forgot-password, /reset-password | |
 | GET, POST | /api/v1/organizations | Mine; create another |
 | GET, PUT | /api/v1/organizations/{id} | Settings |
@@ -233,7 +237,6 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 ## Known gaps before production
 
 - A real email provider (invitations and resets are only logged).
-- Two-factor sign-in for admins and finance roles (design 11.1).
 - SQL Server Row-Level Security as an extra isolation layer.
 - Platform admin area, support-access grants and subscription billing.
 - Organization-defined custom roles (roles are fixed in code for now).

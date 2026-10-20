@@ -1,6 +1,10 @@
-import { Suspense, useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Suspense, useEffect, useState } from 'react'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from './session'
+import { ApiError } from '../lib/api'
+import { formatDay } from '../lib/format'
+import { isOverdue, twoFactorDeadline } from '../features/account/twoFactor'
 import { Permissions, PortalRoles } from '../lib/permissions'
 import { PortalHome } from '../features/portal/PortalHome'
 
@@ -26,8 +30,15 @@ const nav = [
 export function AppLayout() {
   const { me, organization, can, selectOrganization, signOut } = useSession()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const blockedByServer = useTwoFactorBlock()
   if (!me || !organization) return null
+
+  // Roles that need two-step sign-in get a grace period, then only the security page stays open.
+  const deadline = twoFactorDeadline(me, organization)
+  const onSecurityPage = pathname === '/app/security'
+  const shutOut = !onSecurityPage && deadline !== null && (isOverdue(deadline) || blockedByServer)
 
   // Owners and tenants invited to a portal have no staff permissions; they never see staff pages.
   const portalOnly = organization.roles.length > 0 && organization.roles.every((r) => (PortalRoles as readonly string[]).includes(r))
@@ -103,6 +114,9 @@ export function AppLayout() {
           </div>
           <div className="flex items-center gap-3 text-sm">
             <span className="hidden text-slate-600 sm:inline">{me.fullName}</span>
+            <Link to="/app/security" className="rounded-md px-2 py-1 font-medium text-slate-600 hover:bg-slate-100">
+              Security
+            </Link>
             <button
               className="rounded-md px-2 py-1 font-medium text-slate-600 hover:bg-slate-100"
               onClick={async () => {
@@ -114,8 +128,29 @@ export function AppLayout() {
             </button>
           </div>
         </header>
+        {deadline && !shutOut && !onSecurityPage && !isOverdue(deadline) && (
+          <div role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 sm:px-6">
+            Your role needs two-step sign-in. Turn it on by {formatDay(deadline.toISOString().slice(0, 10))} to keep using {organization.name}.{' '}
+            <Link to="/app/security" className="font-medium underline">
+              Turn it on
+            </Link>
+          </div>
+        )}
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
-          {portalOnly ? (
+          {shutOut ? (
+            <div className="mx-auto max-w-lg rounded-lg bg-white p-6 shadow-sm ring-1 ring-slate-200">
+              <h1 className="text-lg font-semibold text-slate-900">Turn on two-step sign-in</h1>
+              <p className="mt-2 text-sm text-slate-600">
+                Your role in {organization.name} needs a code from an authenticator app when you sign in. Turn it on to keep using this organization.
+              </p>
+              <Link
+                to="/app/security"
+                className="mt-4 inline-flex rounded-md bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700"
+              >
+                Set it up now
+              </Link>
+            </div>
+          ) : portalOnly && !onSecurityPage ? (
             <PortalHome key={organization.id} />
           ) : (
             <Suspense fallback={<p className="text-sm text-slate-500">Loading…</p>}>
@@ -126,4 +161,18 @@ export function AppLayout() {
       </div>
     </div>
   )
+}
+
+/** True once any request has been refused because two-step sign-in is overdue (the server's clock decides). */
+function useTwoFactorBlock() {
+  const queryClient = useQueryClient()
+  const [blocked, setBlocked] = useState(false)
+  useEffect(() => {
+    const isBlock = (error: unknown) => error instanceof ApiError && error.code === 'two_factor_required' && error.status === 403
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type === 'updated' && isBlock(event.query.state.error)) setBlocked(true)
+    })
+    return unsubscribe
+  }, [queryClient])
+  return blocked
 }

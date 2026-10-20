@@ -58,6 +58,7 @@ builder.Services.ConfigureApplicationCookie(o =>
 });
 
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+builder.Services.AddSingleton<PropertyManagement.Api.Infrastructure.TwoFactorPolicy>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
 builder.Services.AddScoped<IAuthorizationHandler, PortalRoleHandler>();
 builder.Services.AddAuthorization();

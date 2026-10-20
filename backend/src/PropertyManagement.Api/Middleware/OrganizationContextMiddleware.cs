@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PropertyManagement.Api.Infrastructure;
 using PropertyManagement.Application.Abstractions;
 using PropertyManagement.Domain.Auditing;
 using PropertyManagement.Domain.Organizations;
@@ -18,7 +19,7 @@ public sealed class OrganizationContextMiddleware(RequestDelegate next)
     public const string RouteKey = "organizationId";
 
     public async Task InvokeAsync(HttpContext context, AppDbContext db, ICurrentOrganization currentOrganization,
-        ICurrentUser currentUser, IAuditLogger audit)
+        ICurrentUser currentUser, IAuditLogger audit, TwoFactorPolicy twoFactor)
     {
         var fromRoute = context.Request.RouteValues[RouteKey]?.ToString();
         var fromHeader = context.Request.Headers[HeaderName].ToString();
@@ -56,6 +57,8 @@ public sealed class OrganizationContextMiddleware(RequestDelegate next)
                 OrganizationStatus = o.Status,
                 Roles = m.Roles.Select(r => r.RoleName).ToList(),
                 Branches = m.BranchScopes.Select(s => s.BranchId).ToList(),
+                m.TwoFactorRequiredSinceUtc,
+                TwoFactorEnabled = db.Users.Where(u => u.Id == userId).Select(u => u.TwoFactorEnabled).FirstOrDefault(),
             })
             .SingleOrDefaultAsync(context.RequestAborted);
 
@@ -72,6 +75,18 @@ public sealed class OrganizationContextMiddleware(RequestDelegate next)
         if (access.OrganizationStatus == OrganizationStatus.Suspended && !HttpMethods.IsGet(context.Request.Method))
         {
             await Problem(context, 403, "This organization's subscription is suspended, so it is read-only.", "organization_suspended");
+            return;
+        }
+
+        // Admins, accountants and finance approvers past their grace period must turn on two-step sign-in first.
+        // Account endpoints stay open so they can.
+        if (!access.TwoFactorEnabled && twoFactor.IsOverdue(access.TwoFactorRequiredSinceUtc, DateTime.UtcNow)
+            && !context.Request.Path.StartsWithSegments("/api/v1/auth"))
+        {
+            await audit.RecordNowAsync("organization.access_denied", nameof(Organization), organizationId.ToString(),
+                AuditOutcome.Denied, new { context.Request.Path, reason = "two_factor_required" }, organizationId: organizationId,
+                userId: userId, ct: context.RequestAborted);
+            await Problem(context, 403, "Turn on two-step sign-in to keep using this organization.", "two_factor_required");
             return;
         }
 
