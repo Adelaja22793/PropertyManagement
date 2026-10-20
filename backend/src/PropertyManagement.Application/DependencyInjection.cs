@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PropertyManagement.Application.Abstractions;
 using PropertyManagement.Application.Auditing;
 using PropertyManagement.Application.Branches;
+using PropertyManagement.Application.Leases;
 using PropertyManagement.Application.Organizations;
 using PropertyManagement.Application.Owners;
 using PropertyManagement.Application.Properties;
@@ -22,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<PropertyService>();
         services.AddScoped<OwnerService>();
         services.AddScoped<TenantService>();
+        services.AddScoped<LeaseService>();
         return services;
     }
 }

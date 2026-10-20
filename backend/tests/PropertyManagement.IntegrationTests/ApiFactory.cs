@@ -32,6 +32,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["ConnectionStrings:Default"] = ConnectionString,
             ["Database:MigrateOnStartup"] = "true",
             ["RateLimiting:AuthPermitPerMinute"] = "10000",
+            // Tests run the occupancy refresh themselves, so it never races a test's own changes.
+            ["Jobs:LeaseOccupancy:Enabled"] = "false",
         }));
     }
 

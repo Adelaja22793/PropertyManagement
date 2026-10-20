@@ -136,6 +136,8 @@ public sealed class TenantService(
     public async Task RemoveGuarantorAsync(Guid tenantId, Guid guarantorId, CancellationToken ct)
     {
         var guarantor = await LoadGuarantorAsync(tenantId, guarantorId, ct);
+        if (await db.LeaseGuarantors.AnyAsync(g => g.GuarantorId == guarantorId, ct))
+            throw new DomainException("This guarantor is named on a lease and can't be removed.", "guarantor_in_use");
         db.Guarantors.Remove(guarantor);
         audit.Record("tenant.guarantor_removed", nameof(Guarantor), guarantor.Id.ToString(),
             details: new { TenantId = tenantId, guarantor.FullName });

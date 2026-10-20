@@ -133,6 +133,21 @@ public sealed class TestClient
             type = "Individual", name, email = email ?? $"{Guid.NewGuid():N}@tenants.example.com", phone = "08030000001",
         })).GetProperty("id").GetGuid();
 
+    /// <summary>Request body for a lease on <paramref name="unitId"/>, one year from <paramref name="start"/> by default.</summary>
+    public static object LeaseBody(Guid unitId, Guid[] tenantIds, DateOnly start, DateOnly? end = null, decimal rent = 3_000_000m,
+        Guid[]? guarantorIds = null, object[]? charges = null) => new
+    {
+        unitId, tenantIds, guarantorIds = guarantorIds ?? [], startDate = start, endDate = end ?? start.AddYears(1).AddDays(-1),
+        rentAmount = rent, currency = "NGN", billingFrequency = "Annual", dueDaysBeforePeriod = 0, graceDays = 7,
+        noticePeriodDays = 180, charges = charges ?? [],
+    };
+
+    public async Task<JsonElement> CreateLeaseAsync(Guid unitId, Guid tenantId, DateOnly start, DateOnly? end = null, bool activate = true)
+    {
+        var lease = await PostAsync("/api/v1/leases", LeaseBody(unitId, [tenantId], start, end));
+        return activate ? await PostAsync($"/api/v1/leases/{lease.GetProperty("id").GetGuid()}/activate", new { }) : lease;
+    }
+
     public async Task<(Guid InvitationId, string Token)> InviteAsync(string email, string role, params Guid[] branchIds)
     {
         var response = await Http.PostAsJsonAsync($"/api/v1/organizations/{OrganizationId}/invitations",
