@@ -19,7 +19,11 @@ public static class DependencyInjection
             if (string.IsNullOrWhiteSpace(connectionString))
                 throw new InvalidOperationException("Connection string 'Default' is not configured.");
             o.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure(3));
+            o.AddInterceptors(sp.GetRequiredService<RowLevelSecurityInterceptor>());
         });
+        services.AddScoped<CrossOrganizationAccess>();
+        services.AddScoped<ICrossOrganizationAccess>(sp => sp.GetRequiredService<CrossOrganizationAccess>());
+        services.AddScoped<RowLevelSecurityInterceptor>();
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<ICurrentOrganization, CurrentOrganization>();
         services.AddScoped<IAuditLogger, AuditLogger>();

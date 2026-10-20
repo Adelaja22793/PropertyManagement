@@ -100,15 +100,18 @@ It follows the design in *Property Management System: Requirements & Technical D
 
 ## How organization isolation works
 
-Every organization-owned table has an `OrganizationId`. Four layers keep companies apart:
+Every organization-owned table has an `OrganizationId`. Five layers keep companies apart:
 
 1. **Server-chosen organization.** The `X-Organization-Id` header (or `{organizationId}` in the URL) is only a request. `OrganizationContextMiddleware` accepts it only if the signed-in user has an *active* membership, checked against the database on every request.
 2. **Query filters.** `AppDbContext` adds a filter to every organization-owned entity. With no organization selected, queries return nothing.
 3. **Write guard.** `AppDbContext.SaveChanges` refuses any insert, update or delete of another organization's row, even one loaded with `IgnoreQueryFilters()`.
 4. **Composite foreign keys.** Child rows reference `(OrganizationId, Id)`, so the database itself rejects links across organizations.
+5. **SQL Server Row-Level Security.** `RowLevelSecurityInterceptor` tags each connection with the request's organization (`SESSION_CONTEXT('OrganizationId')`). The `rls.OrganizationIsolation` policy then hides other organizations' rows and refuses writes to them, even for raw SQL or a query that skips the filters. With no organization selected (sign-in, background jobs) the tag is empty and the policy lets everything through, so layers 1 to 4 still do the work there.
 
 `tests/PropertyManagement.IntegrationTests/IsolationTests.cs` and `PropertyIsolationTests.cs` attack each layer with two companies, ABC and XYZ, including properties, units, owners, tenants and identity details.
-SQL Server Row-Level Security (design 4.4, optional) is not added yet.
+A few lookups deliberately cross organizations: the organization switcher, accepting an invitation, public listing enquiries, emailing admins about support requests and checking whether two-step sign-in is required. They wrap the query in `ICrossOrganizationAccess.Allow()`, which clears the tag for that query only.
+
+**Adding a new organization-owned table:** add it to the policy in a migration (drop and re-create `rls.OrganizationIsolation` with the new table's FILTER and BLOCK predicates; see `20261020214644_RowLevelSecurity.cs`). `Every_organization_owned_table_is_covered_by_the_database_policy` fails until you do. `AuditLogs` and `SupportGrants` are left out on purpose: platform support reads them across organizations.
 
 ## Project layout
 
@@ -145,7 +148,7 @@ Emails (invitations, password resets) are only logged in development. The person
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 98 unit + 102 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd backend && dotnet test        # 98 unit + 105 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
 cd frontend && npm test          # 45 component and client tests
 cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running; the support test
                                  # marks a user as platform support with docker exec on the mssql container, or PMS_E2E_SQLCMD)
@@ -257,7 +260,6 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 ## Known gaps before production
 
 - A real email provider (invitations and resets are only logged).
-- SQL Server Row-Level Security as an extra isolation layer.
 - Platform admin area and subscription billing. Support access is read-only only; a write option needs a decision on what support may change.
 - Organization-defined custom roles (roles are fixed in code for now).
 - Data protection (design 11.4): erasing a person's data and per-record retention periods wait for the data protection adviser, as do the privacy notice and consent wording. Guarantors are included in their tenant's export but have no export of their own yet. Large exports are built while the admin waits; a background job with an emailed link would suit very large companies.

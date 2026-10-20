@@ -12,7 +12,8 @@ public sealed class OrganizationService(
     IAppDbContext db,
     ICurrentOrganization currentOrganization,
     IAuditLogger audit,
-    IClock clock)
+    IClock clock,
+    ICrossOrganizationAccess crossOrganization)
 {
     public const string DefaultPlanCode = "starter";
 
@@ -41,6 +42,7 @@ public sealed class OrganizationService(
     /// <summary>Organizations where the user has an active membership. Reads across organizations by design.</summary>
     public async Task<IReadOnlyList<OrganizationSummaryDto>> ListForUserAsync(Guid userId, CancellationToken ct)
     {
+        using var _ = crossOrganization.Allow();
         var rows = await db.Memberships.IgnoreQueryFilters()
             .Where(m => m.UserId == userId && m.Status == MembershipStatus.Active)
             .Join(db.Organizations.Where(o => o.Status != OrganizationStatus.Cancelled),

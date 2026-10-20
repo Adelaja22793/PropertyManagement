@@ -17,7 +17,8 @@ public sealed class MembershipService(
     IUserLookup userLookup,
     IEmailSender email,
     IAuditLogger audit,
-    IClock clock)
+    IClock clock,
+    ICrossOrganizationAccess crossOrganization)
 {
     public static readonly TimeSpan InvitationLifetime = TimeSpan.FromDays(7);
 
@@ -126,14 +127,20 @@ public sealed class MembershipService(
     public async Task<Guid> AcceptAsync(string token, Guid userId, string userEmail, CancellationToken ct)
     {
         var hash = TokenHasher.Hash(token.Trim());
-        var invitation = await db.Invitations.IgnoreQueryFilters().SingleOrDefaultAsync(i => i.TokenHash == hash, ct)
+        UserInvitation invitation;
+        OrganizationMembership? existing;
+        // Finding the invitation looks across organizations; the writes below are checked against its organization.
+        using (crossOrganization.Allow())
+        {
+            invitation = await db.Invitations.IgnoreQueryFilters().SingleOrDefaultAsync(i => i.TokenHash == hash, ct)
                          ?? throw new DomainException("This invitation is no longer valid.", "invitation_invalid");
+            existing = await db.Memberships.IgnoreQueryFilters().Include(m => m.Roles)
+                .SingleOrDefaultAsync(m => m.OrganizationId == invitation.OrganizationId && m.UserId == userId
+                                           && m.Status == MembershipStatus.Active, ct);
+        }
 
         invitation.Accept(userId, userEmail, clock.UtcNow);
 
-        var existing = await db.Memberships.IgnoreQueryFilters().Include(m => m.Roles)
-            .SingleOrDefaultAsync(m => m.OrganizationId == invitation.OrganizationId && m.UserId == userId
-                                       && m.Status == MembershipStatus.Active, ct);
         if (existing is not null && !invitation.IsPortalInvitation)
             throw new DomainException("You are already a member of this organization.", "already_member");
 

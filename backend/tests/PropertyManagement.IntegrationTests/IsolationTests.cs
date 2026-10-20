@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using PropertyManagement.Application.Abstractions;
 using PropertyManagement.Application.Common;
+using PropertyManagement.Domain.Common;
+using PropertyManagement.Domain.Organizations;
 using PropertyManagement.Infrastructure.Persistence;
 
 namespace PropertyManagement.IntegrationTests;
@@ -197,11 +199,84 @@ public sealed class IsolationTests(ApiFactory factory) : IClassFixture<ApiFactor
         services.GetRequiredService<ICurrentOrganization>().Set(_abc.OrganizationId, null, ["OrganizationAdmin"], []);
         var db = services.GetRequiredService<AppDbContext>();
 
-        // Even a query that deliberately bypasses the filter cannot be used to write.
-        var foreignBranch = await db.Branches.IgnoreQueryFilters().SingleAsync(b => b.Id == _xyzBranchId);
+        // Even a row loaded by a deliberate cross-organization lookup cannot be written back.
+        Branch foreignBranch;
+        using (services.GetRequiredService<ICrossOrganizationAccess>().Allow())
+            foreignBranch = await db.Branches.IgnoreQueryFilters().SingleAsync(b => b.Id == _xyzBranchId);
         foreignBranch.Update("Hijacked", null, false);
 
         await Assert.ThrowsAsync<CrossOrganizationWriteException>(() => db.SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task Database_hides_another_organizations_rows_even_when_the_application_filter_is_bypassed()
+    {
+        using var scope = factory.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        services.GetRequiredService<ICurrentOrganization>().Set(_abc.OrganizationId, null, ["OrganizationAdmin"], []);
+        var db = services.GetRequiredService<AppDbContext>();
+
+        Assert.False(await db.Branches.IgnoreQueryFilters().AnyAsync(b => b.Id == _xyzBranchId));
+        Assert.True(await db.Branches.IgnoreQueryFilters().AnyAsync(b => b.OrganizationId == _abc.OrganizationId));
+        Assert.Equal(0, await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE Branches SET Name = 'Hijacked' WHERE Id = {_xyzBranchId}"));
+
+        using (services.GetRequiredService<ICrossOrganizationAccess>().Allow())
+            Assert.True(await db.Branches.IgnoreQueryFilters().AnyAsync(b => b.Id == _xyzBranchId));
+        Assert.False(await db.Branches.IgnoreQueryFilters().AnyAsync(b => b.Id == _xyzBranchId));
+    }
+
+    [Fact]
+    public async Task Database_refuses_raw_sql_that_writes_a_row_for_another_organization()
+    {
+        // No application code at all: a connection tagged with ABC can neither see nor create XYZ rows.
+        await using var connection = new SqlConnection(factory.ConnectionString);
+        await connection.OpenAsync();
+        await using var tag = connection.CreateCommand();
+        tag.CommandText = "EXEC sp_set_session_context @key = N'OrganizationId', @value = @org";
+        tag.Parameters.AddWithValue("@org", _abc.OrganizationId);
+        await tag.ExecuteNonQueryAsync();
+
+        await using var count = connection.CreateCommand();
+        count.CommandText = "SELECT COUNT(*) FROM Branches WHERE OrganizationId = @org";
+        count.Parameters.AddWithValue("@org", _xyz.OrganizationId);
+        Assert.Equal(0, (int)(await count.ExecuteScalarAsync())!);
+
+        await using var insert = connection.CreateCommand();
+        insert.CommandText = "INSERT INTO Branches (Id, OrganizationId, Name, IsActive, CreatedAtUtc) VALUES (NEWID(), @org, N'Planted', 1, SYSUTCDATETIME())";
+        insert.Parameters.AddWithValue("@org", _xyz.OrganizationId);
+        var error = await Assert.ThrowsAsync<SqlException>(() => insert.ExecuteNonQueryAsync());
+        Assert.Contains("block predicate", error.Message);
+    }
+
+    [Fact]
+    public async Task Every_organization_owned_table_is_covered_by_the_database_policy()
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var scoped = db.Model.GetEntityTypes()
+            .Where(t => typeof(IOrganizationScoped).IsAssignableFrom(t.ClrType) && t.GetTableName() is not null)
+            .Select(t => t.GetTableName()!)
+            .Except(["AuditLogs", "SupportGrants"])
+            .Distinct()
+            .Order()
+            .ToList();
+
+        await using var connection = new SqlConnection(factory.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT OBJECT_NAME(p.target_object_id), p.predicate_type_desc
+            FROM sys.security_predicates p
+            JOIN sys.security_policies s ON s.object_id = p.object_id
+            WHERE s.name = 'OrganizationIsolation' AND s.is_enabled = 1
+            """;
+        var covered = new List<(string Table, string Type)>();
+        await using (var reader = await command.ExecuteReaderAsync())
+            while (await reader.ReadAsync())
+                covered.Add((reader.GetString(0), reader.GetString(1)));
+
+        Assert.Equal(scoped, covered.Where(c => c.Type == "FILTER").Select(c => c.Table).Order().ToList());
+        Assert.Equal(scoped, covered.Where(c => c.Type == "BLOCK").Select(c => c.Table).Distinct().Order().ToList());
     }
 
     [Fact]
