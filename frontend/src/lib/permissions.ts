@@ -8,7 +8,21 @@ export const Permissions = {
   usersView: 'Users.View',
   usersManage: 'Users.Manage',
   auditView: 'Audit.View',
+  propertiesView: 'Properties.View',
+  propertiesCreate: 'Properties.Create',
+  propertiesUpdate: 'Properties.Update',
+  propertiesArchive: 'Properties.Archive',
+  ownersView: 'Owners.View',
+  ownersManage: 'Owners.Manage',
+  ownersApproveBankAccounts: 'Owners.ApproveBankAccounts',
+  tenantsView: 'Tenants.View',
+  tenantsCreate: 'Tenants.Create',
+  tenantsUpdate: 'Tenants.Update',
+  tenantsViewKyc: 'Tenants.ViewKyc',
 } as const
+
+/** Roles given only to landlords and tenants through a portal invitation. They have no staff permissions. */
+export const PortalRoles = ['Owner', 'Tenant'] as const
 
 export const StaffRoles = [
   { value: 'OrganizationAdmin', label: 'Organization admin' },
@@ -21,5 +35,6 @@ export const StaffRoles = [
 ] as const
 
 export function roleLabel(role: string): string {
+  if (role === 'Owner') return 'Property owner'
   return StaffRoles.find((r) => r.value === role)?.label ?? role
 }

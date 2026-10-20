@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -7,13 +8,16 @@ using PropertyManagement.Application.Common;
 using PropertyManagement.Domain.Auditing;
 using PropertyManagement.Domain.Common;
 using PropertyManagement.Domain.Organizations;
+using PropertyManagement.Domain.Owners;
 using PropertyManagement.Domain.Platform;
+using PropertyManagement.Domain.Properties;
+using PropertyManagement.Domain.Tenants;
 using PropertyManagement.Infrastructure.Identity;
 
 namespace PropertyManagement.Infrastructure.Persistence;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentOrganization currentOrganization)
-    : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>(options), IAppDbContext
+    : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>(options), IAppDbContext, IDataProtectionKeyContext
 {
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<Branch> Branches => Set<Branch>();
@@ -22,6 +26,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentOrgani
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
     public DbSet<OrganizationSubscription> Subscriptions => Set<OrganizationSubscription>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Property> Properties => Set<Property>();
+    public DbSet<PropertyUnit> Units => Set<PropertyUnit>();
+    public DbSet<PropertyOwnership> PropertyOwnerships => Set<PropertyOwnership>();
+    public DbSet<Owner> Owners => Set<Owner>();
+    public DbSet<OwnerBankAccount> OwnerBankAccounts => Set<OwnerBankAccount>();
+    public DbSet<ManagementAgreement> ManagementAgreements => Set<ManagementAgreement>();
+    public DbSet<OwnerUserLink> OwnerUserLinks => Set<OwnerUserLink>();
+    public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<TenantKyc> TenantKyc => Set<TenantKyc>();
+    public DbSet<Guarantor> Guarantors => Set<Guarantor>();
+    public DbSet<ScreeningCheck> ScreeningChecks => Set<ScreeningCheck>();
+    public DbSet<TenantUserLink> TenantUserLinks => Set<TenantUserLink>();
+
+    /// <summary>Data Protection keys used to encrypt identity numbers. Shared by all API instances.</summary>
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     /// <summary>
     /// Read by the global query filters on every query. With no organization selected it is
@@ -33,6 +52,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentOrgani
     {
         base.OnModelCreating(builder);
         builder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        // Domain entities create their own IDs. Telling EF so means a new child added to a loaded parent
+        // (for example a role added to an existing membership) is inserted, not treated as an existing row.
+        foreach (var entityType in builder.Model.GetEntityTypes()
+                     .Where(t => t.ClrType.Assembly == typeof(IOrganizationScoped).Assembly))
+        {
+            var key = entityType.FindPrimaryKey();
+            if (key is { Properties: [{ ClrType: var type } keyProperty] } && type == typeof(Guid))
+                keyProperty.ValueGenerated = Microsoft.EntityFrameworkCore.Metadata.ValueGenerated.Never;
+        }
 
         // Defence layer 1 (design 4.4): every organization-owned entity is filtered to the active organization.
         foreach (var entityType in builder.Model.GetEntityTypes()

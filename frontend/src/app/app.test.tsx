@@ -43,6 +43,39 @@ describe('routing and access', () => {
   })
 })
 
+describe('portal users', () => {
+  const ownerOrg = { ...agentOrg, roles: ['Owner'], permissions: [] }
+
+  it('see a portal landing page and no staff pages', async () => {
+    mockApi((url) => (url.endsWith('/auth/me') ? { status: 200, body: me([ownerOrg]) } : { status: 200, body: [] }))
+    renderApp('/app/properties')
+
+    expect(await screen.findByText('Your owner portal is coming soon.')).toBeInTheDocument()
+    const nav = screen.getByRole('navigation', { name: 'Main' })
+    expect(nav).toHaveTextContent('Home')
+    expect(nav).not.toHaveTextContent('Properties')
+    expect(nav).not.toHaveTextContent('Settings')
+    expect(screen.queryByText("You don't have access to this page")).not.toBeInTheDocument()
+  })
+})
+
+describe('phase 3 navigation', () => {
+  it('shows properties, owners and tenants to roles that have them', async () => {
+    const org = { ...adminOrg, permissions: [...adminOrg.permissions, 'Properties.View', 'Owners.View', 'Tenants.View'] }
+    mockApi((url) => {
+      if (url.endsWith('/auth/me')) return { status: 200, body: me([org]) }
+      if (url.includes('pageSize=1')) return { status: 200, body: { items: [], page: 1, pageSize: 1, totalCount: 3 } }
+      return { status: 200, body: [] }
+    })
+    renderApp('/app')
+    const nav = await screen.findByRole('navigation', { name: 'Main' })
+    expect(nav).toHaveTextContent('Properties')
+    expect(nav).toHaveTextContent('Owners')
+    expect(nav).toHaveTextContent('Tenants')
+    await waitFor(() => expect(screen.getAllByText('3')).toHaveLength(3))
+  })
+})
+
 describe('sign in', () => {
   it('validates before calling the API', async () => {
     const calls = mockApi(() => ({ status: 401 }))

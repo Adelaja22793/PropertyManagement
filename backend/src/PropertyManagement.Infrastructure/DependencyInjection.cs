@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +27,13 @@ public static class DependencyInjection
         services.AddScoped<IUserDirectory>(sp => sp.GetRequiredService<UserDirectory>());
         services.AddScoped<IUserLookup>(sp => sp.GetRequiredService<UserDirectory>());
         services.AddSingleton<IEmailSender, LoggingEmailSender>();
+
+        // Keys live in the database so every API instance can read what another encrypted. In production also
+        // protect the keys at rest (for example ProtectKeysWithAzureKeyVault); see README.
+        services.AddDataProtection()
+            .SetApplicationName("PropertyManagement")
+            .PersistKeysToDbContext<AppDbContext>();
+        services.AddSingleton<ISensitiveDataProtector, SensitiveDataProtector>();
         return services;
     }
 }

@@ -83,6 +83,56 @@ public sealed class TestClient
         return await response.Content.ReadFromJsonAsync<JsonElement>(Json);
     }
 
+    /// <summary>Invites a new person with a role, and returns them signed in to this organization.</summary>
+    public async Task<TestClient> AddMemberAsync(ApiFactory factory, string role, params Guid[] branchIds)
+    {
+        var email = $"{role.ToLowerInvariant()}-{Guid.NewGuid():N}@example.com";
+        var (_, token) = await InviteAsync(email, role, branchIds);
+        return await RegisterWithInvitationAsync(factory, email, token);
+    }
+
+    public async Task<JsonElement> PostAsync(string url, object body)
+    {
+        var response = await Http.PostAsJsonAsync(url, body, Json);
+        await response.EnsureSuccessAsync();
+        return await response.Content.ReadFromJsonAsync<JsonElement>(Json);
+    }
+
+    public async Task<JsonElement> PutAsync(string url, object body)
+    {
+        var response = await Http.PutAsJsonAsync(url, body, Json);
+        await response.EnsureSuccessAsync();
+        return await response.Content.ReadFromJsonAsync<JsonElement>(Json);
+    }
+
+    public Task<JsonElement> GetAsync(string url) => Http.GetFromJsonAsync<JsonElement>(url, Json);
+
+    public async Task<Guid> CreatePropertyAsync(string code, Guid? branchId = null, Guid? managerUserId = null) =>
+        (await PostAsync("/api/v1/properties", new
+        {
+            code, name = $"Property {code}", type = "Residential", addressLine = "12 Admiralty Way", city = "Lekki",
+            state = "Lagos", localGovernmentArea = "Eti-Osa", branchId, managerUserId,
+        })).GetProperty("id").GetGuid();
+
+    public async Task<Guid> CreateUnitAsync(Guid propertyId, string code, string occupancy = "Vacant") =>
+        (await PostAsync($"/api/v1/properties/{propertyId}/units", new
+        {
+            code, type = "Flat", bedrooms = 3, bathrooms = 3, defaultRent = 4_500_000m, currency = "NGN",
+            billingFrequency = "Annual", occupancyStatus = occupancy,
+        })).GetProperty("id").GetGuid();
+
+    public async Task<Guid> CreateOwnerAsync(string name, string? email = null) =>
+        (await PostAsync("/api/v1/owners", new
+        {
+            type = "Individual", name, email = email ?? $"{Guid.NewGuid():N}@owners.example.com", phone = "+234 803 000 0000",
+        })).GetProperty("id").GetGuid();
+
+    public async Task<Guid> CreateTenantAsync(string name, string? email = null) =>
+        (await PostAsync("/api/v1/tenants", new
+        {
+            type = "Individual", name, email = email ?? $"{Guid.NewGuid():N}@tenants.example.com", phone = "08030000001",
+        })).GetProperty("id").GetGuid();
+
     public async Task<(Guid InvitationId, string Token)> InviteAsync(string email, string role, params Guid[] branchIds)
     {
         var response = await Http.PostAsJsonAsync($"/api/v1/organizations/{OrganizationId}/invitations",

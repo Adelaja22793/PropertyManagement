@@ -36,6 +36,14 @@ public static class Permissions
         public const string Archive = "Properties.Archive";
     }
 
+    public static class Owners
+    {
+        public const string View = "Owners.View";
+        public const string Manage = "Owners.Manage";
+        /// <summary>Approve or reject owner payout bank accounts. Never by the person who added the account.</summary>
+        public const string ApproveBankAccounts = "Owners.ApproveBankAccounts";
+    }
+
     public static class Tenants
     {
         public const string View = "Tenants.View";

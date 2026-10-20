@@ -60,7 +60,7 @@ export async function api<T>(method: Method, path: string, body?: unknown): Prom
 
   if (response.status === 204 || response.status === 202) return undefined as T
   const text = await response.text()
-  const data = text ? JSON.parse(text) : undefined
+  const data = parseJson(text)
 
   if (!response.ok) {
     throw new ApiError(
@@ -71,6 +71,16 @@ export async function api<T>(method: Method, path: string, body?: unknown): Prom
     )
   }
   return data as T
+}
+
+/** The body as JSON, or undefined when it is empty or not JSON (e.g. a proxy's error page). */
+function parseJson(text: string) {
+  if (!text) return undefined
+  try {
+    return JSON.parse(text)
+  } catch {
+    return undefined
+  }
 }
 
 function normalizeErrors(errors: unknown): Record<string, string[]> {

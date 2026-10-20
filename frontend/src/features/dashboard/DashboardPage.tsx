@@ -1,13 +1,12 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { get } from '../../lib/api'
-import type { Branch, Member } from '../../lib/types'
+import type { Branch, Member, Paged } from '../../lib/types'
 import { useSession } from '../../app/session'
 import { Permissions, roleLabel } from '../../lib/permissions'
 import { Card, PageHeader } from '../../components/ui'
 
 const comingNext = [
-  { phase: 'Phase 3', items: 'Properties, units, owners, tenants and guarantors' },
   { phase: 'Phase 4', items: 'Leases, rent invoices, payments, receipts and bank matching' },
   { phase: 'Phase 5', items: 'Owner statements, payouts, expenses and maintenance' },
   { phase: 'Phase 6', items: 'Owner and tenant portals, service charges and reports' },
@@ -33,6 +32,13 @@ export function DashboardPage() {
         description={`${organization?.name} · ${organization?.roles.map(roleLabel).join(', ')}`}
       />
       <div className="grid gap-4 sm:grid-cols-2">
+        {can(Permissions.propertiesView) && (
+          <CountCard title="Properties" to="/app/properties" path="/api/v1/properties" text="Buildings and estates you manage." />
+        )}
+        {can(Permissions.ownersView) && <CountCard title="Owners" to="/app/owners" path="/api/v1/owners" text="Landlords you manage property for." />}
+        {can(Permissions.tenantsView) && (
+          <CountCard title="Tenants" to="/app/tenants" path="/api/v1/tenants" text="People and companies renting from you." />
+        )}
         {can(Permissions.branchesView) && (
           <Card title="Branches" actions={<Link to="/app/branches" className="text-sm font-medium text-brand-700 hover:underline">Manage</Link>}>
             <p className="text-3xl font-semibold">{branches.data?.length ?? '–'}</p>
@@ -59,5 +65,16 @@ export function DashboardPage() {
         </Card>
       </div>
     </>
+  )
+}
+
+/** A total from a paged list, read with a one-item page. */
+function CountCard({ title, to, path, text }: { title: string; to: string; path: string; text: string }) {
+  const count = useQuery({ queryKey: [title.toLowerCase(), 'count'], queryFn: () => get<Paged<unknown>>(`${path}?pageSize=1`) })
+  return (
+    <Card title={title} actions={<Link to={to} className="text-sm font-medium text-brand-700 hover:underline">View</Link>}>
+      <p className="text-3xl font-semibold">{count.data?.totalCount ?? '–'}</p>
+      <p className="mt-1 text-sm text-slate-600">{text}</p>
+    </Card>
   )
 }

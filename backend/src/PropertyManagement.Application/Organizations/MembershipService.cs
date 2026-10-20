@@ -4,6 +4,8 @@ using PropertyManagement.Application.Authorization;
 using PropertyManagement.Application.Common;
 using PropertyManagement.Domain.Common;
 using PropertyManagement.Domain.Organizations;
+using PropertyManagement.Domain.Owners;
+using PropertyManagement.Domain.Tenants;
 
 namespace PropertyManagement.Application.Organizations;
 
@@ -21,9 +23,12 @@ public sealed class MembershipService(
 
     public async Task<IReadOnlyList<MemberDto>> ListAsync(bool includeRevoked, CancellationToken ct)
     {
+        var staffRoles = Roles.StaffRoles.ToArray();
         var memberships = await db.Memberships
             .Include(m => m.Roles).Include(m => m.BranchScopes)
             .Where(m => includeRevoked || m.Status == MembershipStatus.Active)
+            // Owners and tenants with portal access only are not staff, so they are not listed as team members.
+            .Where(m => m.Roles.Any(r => staffRoles.Contains(r.RoleName)))
             .ToListAsync(ct);
         var people = await users.GetAsync(memberships.Select(m => m.UserId), ct);
         return memberships
@@ -45,16 +50,51 @@ public sealed class MembershipService(
             await db.Memberships.AnyAsync(m => m.UserId == existingUser.Id && m.Status == MembershipStatus.Active, ct))
             throw new DomainException("This person is already a member.", "already_member");
 
+        return await CreateInvitationAsync(organizationId, emailAddress, request.Role, branchIds, null, null, ct);
+    }
+
+    /// <summary>
+    /// Invites an owner or tenant to the portal. Accepting links their login to the record, which is all the
+    /// portal lets them see (design 4.6).
+    /// </summary>
+    public async Task<CreatedInvitationDto> InvitePortalUserAsync(Guid? ownerId, Guid? tenantId, CancellationToken ct)
+    {
+        var organizationId = currentOrganization.RequireOrganizationId();
+        string? address;
+        if (ownerId is { } oid)
+        {
+            address = await db.Owners.Where(o => o.Id == oid).Select(o => o.Email).SingleOrDefaultAsync(ct)
+                      ?? (await db.Owners.AnyAsync(o => o.Id == oid, ct) ? null : throw new NotFoundException("Owner"));
+            if (await db.OwnerUserLinks.AnyAsync(l => l.OwnerId == oid, ct))
+                throw new DomainException("This owner already has portal access.", "portal_exists");
+        }
+        else if (tenantId is { } tid)
+        {
+            address = await db.Tenants.Where(t => t.Id == tid).Select(t => t.Email).SingleOrDefaultAsync(ct)
+                      ?? (await db.Tenants.AnyAsync(t => t.Id == tid, ct) ? null : throw new NotFoundException("Tenant"));
+            if (await db.TenantUserLinks.AnyAsync(l => l.TenantId == tid, ct))
+                throw new DomainException("This tenant already has portal access.", "portal_exists");
+        }
+        else throw new ArgumentException("An owner or tenant is required.");
+
+        if (address is null) throw new DomainException("Add an email address before inviting them to the portal.", "email_required");
+        var role = ownerId is not null ? Roles.Owner : Roles.Tenant;
+        return await CreateInvitationAsync(organizationId, address, role, [], ownerId, tenantId, ct);
+    }
+
+    private async Task<CreatedInvitationDto> CreateInvitationAsync(Guid organizationId, string emailAddress, string role,
+        IReadOnlyList<Guid> branchIds, Guid? ownerId, Guid? tenantId, CancellationToken ct)
+    {
         if (await db.Invitations.AnyAsync(i => i.Email == emailAddress && i.Status == InvitationStatus.Pending
                                                && i.ExpiresAtUtc > clock.UtcNow, ct))
             throw new DomainException("An invitation is already pending for this email.", "invitation_pending");
 
         var token = TokenHasher.NewToken();
-        var invitation = new UserInvitation(organizationId, emailAddress, request.Role, branchIds,
-            TokenHasher.Hash(token), currentUser.RequireUserId(), InvitationLifetime);
+        var invitation = new UserInvitation(organizationId, emailAddress, role, branchIds,
+            TokenHasher.Hash(token), currentUser.RequireUserId(), InvitationLifetime, ownerId, tenantId);
         db.Invitations.Add(invitation);
-        audit.Record("member.invited", nameof(UserInvitation), invitation.Id.ToString(),
-            details: new { invitation.Email, invitation.RoleName });
+        audit.Record(invitation.IsPortalInvitation ? "portal.invited" : "member.invited", nameof(UserInvitation),
+            invitation.Id.ToString(), details: new { invitation.Email, invitation.RoleName, ownerId, tenantId });
         await db.SaveChangesAsync(ct);
 
         var organization = await db.Organizations.SingleAsync(o => o.Id == organizationId, ct);
@@ -91,15 +131,32 @@ public sealed class MembershipService(
 
         invitation.Accept(userId, userEmail, clock.UtcNow);
 
-        var existing = await db.Memberships.IgnoreQueryFilters()
+        var existing = await db.Memberships.IgnoreQueryFilters().Include(m => m.Roles)
             .SingleOrDefaultAsync(m => m.OrganizationId == invitation.OrganizationId && m.UserId == userId
                                        && m.Status == MembershipStatus.Active, ct);
-        if (existing is not null) throw new DomainException("You are already a member of this organization.", "already_member");
+        if (existing is not null && !invitation.IsPortalInvitation)
+            throw new DomainException("You are already a member of this organization.", "already_member");
 
-        var membership = new OrganizationMembership(invitation.OrganizationId, userId, [invitation.RoleName]);
-        currentOrganization.Set(invitation.OrganizationId, membership.Id, [invitation.RoleName], invitation.GetBranchIds());
-        membership.SetBranchScope(invitation.GetBranchIds());
-        db.Memberships.Add(membership);
+        OrganizationMembership membership;
+        if (existing is not null)
+        {
+            // A staff member who is also a landlord or tenant keeps one membership and gains the portal role.
+            membership = existing;
+            currentOrganization.Set(invitation.OrganizationId, membership.Id, [invitation.RoleName], []);
+            membership.SetRoles(membership.Roles.Select(r => r.RoleName).Append(invitation.RoleName).ToList());
+        }
+        else
+        {
+            membership = new OrganizationMembership(invitation.OrganizationId, userId, [invitation.RoleName]);
+            currentOrganization.Set(invitation.OrganizationId, membership.Id, [invitation.RoleName], invitation.GetBranchIds());
+            membership.SetBranchScope(invitation.GetBranchIds());
+            db.Memberships.Add(membership);
+        }
+
+        if (invitation.OwnerId is { } ownerId)
+            db.OwnerUserLinks.Add(new OwnerUserLink(invitation.OrganizationId, ownerId, userId));
+        if (invitation.TenantId is { } tenantId)
+            db.TenantUserLinks.Add(new TenantUserLink(invitation.OrganizationId, tenantId, userId));
         audit.Record("member.joined", nameof(OrganizationMembership), membership.Id.ToString(),
             details: new { invitation.RoleName, InvitationId = invitation.Id }, userId: userId);
         await db.SaveChangesAsync(ct);
@@ -115,7 +172,9 @@ public sealed class MembershipService(
         if (before.Contains(Roles.OrganizationAdmin) && !request.Roles.Contains(Roles.OrganizationAdmin))
             await EnsureAnotherAdminAsync(membership.Id, ct);
 
-        membership.SetRoles(request.Roles);
+        // Portal roles come from owner and tenant links, so a staff role edit keeps them.
+        var portalRoles = membership.Roles.Select(r => r.RoleName).Where(r => !Roles.StaffRoles.Contains(r));
+        membership.SetRoles(request.Roles.Concat(portalRoles).ToList());
         if (request.BranchIds is not null) membership.SetBranchScope(await RequireBranchesAsync(request.BranchIds, ct));
 
         audit.Record("member.updated", nameof(OrganizationMembership), membership.Id.ToString(),

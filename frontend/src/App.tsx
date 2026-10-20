@@ -1,3 +1,4 @@
+import { lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './app/AppLayout'
 import { GuestOnly, RequirePermission, RequireSession, RequireUser } from './app/guards'
@@ -13,6 +14,14 @@ import { SettingsPage } from './features/organizations/SettingsPage'
 import { NewOrganizationPage } from './features/organizations/NewOrganizationPage'
 import { JoinPage } from './features/organizations/JoinPage'
 
+// Phase 3 screens load on first visit to keep the first download small.
+const PropertiesPage = lazy(() => import('./features/properties/PropertiesPage').then((m) => ({ default: m.PropertiesPage })))
+const PropertyDetailPage = lazy(() => import('./features/properties/PropertyDetailPage').then((m) => ({ default: m.PropertyDetailPage })))
+const OwnersPage = lazy(() => import('./features/owners/OwnersPage').then((m) => ({ default: m.OwnersPage })))
+const OwnerDetailPage = lazy(() => import('./features/owners/OwnerDetailPage').then((m) => ({ default: m.OwnerDetailPage })))
+const TenantsPage = lazy(() => import('./features/tenants/TenantsPage').then((m) => ({ default: m.TenantsPage })))
+const TenantDetailPage = lazy(() => import('./features/tenants/TenantDetailPage').then((m) => ({ default: m.TenantDetailPage })))
+
 export function App() {
   return (
     <Routes>
@@ -24,6 +33,12 @@ export function App() {
       <Route path="/organizations/new" element={<RequireUser><NewOrganizationPage /></RequireUser>} />
       <Route path="/app" element={<RequireSession><AppLayout /></RequireSession>}>
         <Route index element={<DashboardPage />} />
+        <Route path="properties" element={<RequirePermission permission={Permissions.propertiesView}><PropertiesPage /></RequirePermission>} />
+        <Route path="properties/:id" element={<RequirePermission permission={Permissions.propertiesView}><PropertyDetailPage /></RequirePermission>} />
+        <Route path="owners" element={<RequirePermission permission={Permissions.ownersView}><OwnersPage /></RequirePermission>} />
+        <Route path="owners/:id" element={<RequirePermission permission={Permissions.ownersView}><OwnerDetailPage /></RequirePermission>} />
+        <Route path="tenants" element={<RequirePermission permission={Permissions.tenantsView}><TenantsPage /></RequirePermission>} />
+        <Route path="tenants/:id" element={<RequirePermission permission={Permissions.tenantsView}><TenantDetailPage /></RequirePermission>} />
         <Route path="branches" element={<RequirePermission permission={Permissions.branchesView}><BranchesPage /></RequirePermission>} />
         <Route path="team" element={<RequirePermission permission={Permissions.usersView}><TeamPage /></RequirePermission>} />
         <Route path="audit" element={<RequirePermission permission={Permissions.auditView}><AuditPage /></RequirePermission>} />

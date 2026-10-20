@@ -105,5 +105,6 @@ internal sealed class UserInvitationConfiguration : IEntityTypeConfiguration<Use
         b.HasIndex(x => x.TokenHash).IsUnique();
         b.HasIndex(x => new { x.OrganizationId, x.Email });
         b.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
+        b.Ignore(x => x.IsPortalInvitation);
     }
 }

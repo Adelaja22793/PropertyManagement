@@ -3,7 +3,7 @@
 A multi-company property management platform for Nigerian property managers and landlords.
 It follows the design in *Property Management System: Requirements & Technical Design v1.1*.
 
-**Status: Phase 1 (foundation and sign-in) plus the core of Phase 2 (organization isolation and audit).**
+**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) and Phase 3 (properties, units, owners and tenants). No money features yet.**
 
 ## What works today
 
@@ -16,6 +16,20 @@ It follows the design in *Property Management System: Requirements & Technical D
 - Organization settings (contact details, TIN, VAT number, time zone). Currency is NGN.
 - An append-only audit log of sign-ins, access denials and every sensitive change.
 
+### Properties, owners and tenants (Phase 3)
+
+- **Properties** with code, type, address, state and LGA, branch, responsible manager and amenities; archive when no unit is occupied.
+- **Units** with a code unique within the property, type, rooms, size, default rent (NGN by default), billing frequency, service charge share and occupancy.
+- **Who sees which properties.** Admins, accountants and finance approvers see all. Members limited to branches see those branches' properties and can only create properties there. A member whose only property role is Property Manager sees just the properties assigned to them.
+- **Owners** (individuals or companies) with contact details, TIN and preferred channel.
+- **Ownership shares** per property with effective dates. Shares are always replaced as a set that totals exactly 100%, from a chosen date, and history is kept.
+- **Payout bank accounts** (10-digit NUBAN). A new or changed account is pending until a *different* person with `Owners.ApproveBankAccounts` approves it (maker-checker); approval replaces the previous account and emails the owner.
+- **Management agreements** per owner, for one property or all of their properties: fee basis (percent of rent collected by default, percent invoiced, or fixed monthly), letting fee, payout frequency, advance rent release (on receipt by default, per decision 18.6), reserve and dates. Overlapping agreements are refused. Finance (Phase 4) will use these terms.
+- **Tenants** (individuals or companies) with contacts, employer, emergency contact, RC number and TIN.
+- **Identity details (KYC).** NIN or other ID and BVN are encrypted with ASP.NET Core Data Protection before they are stored. Everyone with `Tenants.View` sees only the ID type and last four digits; the full numbers need `Tenants.ViewKyc`, and every reveal is audited. Numbers never go in the audit log.
+- **Guarantors** and **screening checks** (employer, previous landlord, references) recorded against the tenant, with who checked and the outcome.
+- **Portal invitations** for owners and tenants. Accepting links the login to that owner or tenant record. Portal users have no staff permissions and are not listed as team members; the portal screens themselves come later.
+
 ## How organization isolation works
 
 Every organization-owned table has an `OrganizationId`. Four layers keep companies apart:
@@ -25,7 +39,7 @@ Every organization-owned table has an `OrganizationId`. Four layers keep compani
 3. **Write guard.** `AppDbContext.SaveChanges` refuses any insert, update or delete of another organization's row, even one loaded with `IgnoreQueryFilters()`.
 4. **Composite foreign keys.** Child rows reference `(OrganizationId, Id)`, so the database itself rejects links across organizations.
 
-`tests/PropertyManagement.IntegrationTests/IsolationTests.cs` attacks each layer with two companies, ABC and XYZ.
+`tests/PropertyManagement.IntegrationTests/IsolationTests.cs` and `PropertyIsolationTests.cs` attack each layer with two companies, ABC and XYZ, including properties, units, owners, tenants and identity details.
 SQL Server Row-Level Security (design 4.4, optional) is not added yet.
 
 ## Project layout
@@ -61,8 +75,8 @@ Emails (invitations, password resets) are only logged in development. The person
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 19 unit + 24 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
-cd frontend && npm test          # 13 component and client tests
+cd backend && dotnet test        # 33 unit + 60 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd frontend && npm test          # 27 component and client tests
 cd frontend && npm run e2e       # browser journey on desktop and phone sizes (needs the API running)
 ```
 
@@ -86,6 +100,29 @@ Each integration test class creates its own database and drops it afterwards.
 | GET, POST | /api/v1/branches | Uses `X-Organization-Id` |
 | GET, PUT | /api/v1/branches/{id} | |
 | GET | /api/v1/audit-logs | Paged |
+| GET, POST | /api/v1/properties | Search (`search`, `branchId`, `status`, `includeArchived`, paging); create |
+| GET | /api/v1/properties/manager-options | Staff who can be assigned as manager |
+| GET, PUT | /api/v1/properties/{id} | |
+| POST | /api/v1/properties/{id}/archive | |
+| GET, POST | /api/v1/properties/{id}/units | |
+| GET, PUT | /api/v1/properties/{id}/owners | Current and past shares; replace from a date (must total 100%) |
+| GET, PUT | /api/v1/units/{id} | |
+| POST | /api/v1/units/{id}/archive | |
+| GET, POST | /api/v1/owners | Search; create |
+| GET, PUT | /api/v1/owners/{id} | |
+| GET, POST | /api/v1/owners/{id}/bank-accounts | New accounts wait for approval |
+| POST | /api/v1/owners/{id}/bank-accounts/{accountId}/decision | Approve or reject; not by the person who added it |
+| GET, POST | /api/v1/owners/{id}/agreements | |
+| PUT | /api/v1/owners/{id}/agreements/{agreementId} | |
+| POST | /api/v1/owners/{id}/portal-invite | |
+| GET, POST | /api/v1/tenants | Search; create |
+| GET, PUT | /api/v1/tenants/{id} | |
+| GET, PUT | /api/v1/tenants/{id}/kyc | GET returns full numbers (needs `Tenants.ViewKyc`, audited); PUT replaces them |
+| PUT | /api/v1/tenants/{id}/kyc/verification | |
+| GET, POST | /api/v1/tenants/{id}/guarantors | |
+| PUT, DELETE | /api/v1/tenants/{id}/guarantors/{guarantorId} | |
+| GET, POST | /api/v1/tenants/{id}/screening | |
+| POST | /api/v1/tenants/{id}/portal-invite | |
 | GET | /api/v1/plans | Public |
 | GET | /health | |
 
@@ -99,3 +136,7 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 - Platform admin area, support-access grants and subscription billing.
 - Organization-defined custom roles (roles are fixed in code for now).
 - The audit table is append-only in code; also deny UPDATE and DELETE to the app's database login.
+- Data Protection keys (which encrypt identity numbers and sign-in cookies) are stored in the `DataProtectionKeys` table. In production also encrypt the keys themselves, for example with `ProtectKeysWithAzureKeyVault` or a certificate, so a database copy alone can't decrypt NIN or BVN.
+- Leases, guarantor-to-lease links, inspections and unit occupancy driven by leases come with Phase 4. Until then occupancy is set by hand.
+- Owner and tenant portal screens (the invitations and record links are in place).
+- Documents and photos for properties, owners and tenants (needs file storage with virus scanning, design 3.5).
