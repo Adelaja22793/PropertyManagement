@@ -3,7 +3,9 @@ using PropertyManagement.Domain.Organizations;
 namespace PropertyManagement.Application.Organizations;
 
 public sealed record OrganizationSummaryDto(Guid Id, string Name, string Slug, OrganizationType Type,
-    OrganizationStatus Status, IReadOnlyList<string> Roles, IReadOnlyList<string> Permissions, DateTime? TwoFactorRequiredSinceUtc = null);
+    OrganizationStatus Status, IReadOnlyList<string> Roles, IReadOnlyList<string> Permissions, DateTime? TwoFactorRequiredSinceUtc = null,
+    /// <summary>Set when the user is platform support with an approved grant here: read-only access ends at this time.</summary>
+    DateTime? SupportAccessUntilUtc = null);
 
 public sealed record OrganizationDetailDto(Guid Id, string Name, string Slug, OrganizationType Type,
     OrganizationStatus Status, string BaseCurrency, string TimeZone, string? ContactEmail, string? ContactPhone,

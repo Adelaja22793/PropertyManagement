@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from './session'
 import { ApiError } from '../lib/api'
-import { formatDay } from '../lib/format'
+import { formatDate, formatDay } from '../lib/format'
 import { isOverdue, twoFactorDeadline } from '../features/account/twoFactor'
 import { Permissions, PortalRoles } from '../lib/permissions'
 import { PortalHome } from '../features/portal/PortalHome'
@@ -104,6 +104,7 @@ export function AppLayout() {
               {me.organizations.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
+                  {o.supportAccessUntilUtc ? ' (support)' : ''}
                 </option>
               ))}
               <option value="__new">+ New organization…</option>
@@ -114,7 +115,12 @@ export function AppLayout() {
           </div>
           <div className="flex items-center gap-3 text-sm">
             <span className="hidden text-slate-600 sm:inline">{me.fullName}</span>
-            <Link to="/app/security" className="rounded-md px-2 py-1 font-medium text-slate-600 hover:bg-slate-100">
+{me.isPlatformAdmin && (
+              <Link to="/app/support-desk" className="rounded-md px-2 py-1 font-medium text-slate-600 hover:bg-slate-100">
+                Support desk
+              </Link>
+            )}
+                        <Link to="/app/security" className="rounded-md px-2 py-1 font-medium text-slate-600 hover:bg-slate-100">
               Security
             </Link>
             <button
@@ -128,6 +134,12 @@ export function AppLayout() {
             </button>
           </div>
         </header>
+        {organization.supportAccessUntilUtc && (
+          <div role="status" className="border-b border-sky-200 bg-sky-50 px-4 py-2.5 text-sm text-sky-900 sm:px-6">
+            Support access to {organization.name}: read-only, ends {formatDate(organization.supportAccessUntilUtc)}. Everything you open is
+            in their audit log.
+          </div>
+        )}
         {deadline && !shutOut && !onSecurityPage && !isOverdue(deadline) && (
           <div role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 sm:px-6">
             Your role needs two-step sign-in. Turn it on by {formatDay(deadline.toISOString().slice(0, 10))} to keep using {organization.name}.{' '}

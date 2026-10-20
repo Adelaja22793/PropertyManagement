@@ -18,7 +18,7 @@ public sealed class ExceptionHandler(IProblemDetailsService problems, ILogger<Ex
     ];
 
     /// <summary>Rules about who may act, rather than about the data.</summary>
-    private static readonly HashSet<string> ForbiddenCodes = ["maker_checker"];
+    private static readonly HashSet<string> ForbiddenCodes = ["maker_checker", "two_factor_required"];
 
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken ct)
     {

@@ -40,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<ReportService>();
         services.AddScoped<LeadService>();
         services.AddScoped<PublicListingService>();
+        services.AddScoped<Platform.SupportAccessService>();
         return services;
     }
 }

@@ -71,6 +71,13 @@ export function SettingsPage() {
               <TextField label="VAT number" {...register('vatNumber')} />
               <TextField label="Time zone" {...register('timeZone')} hint="Africa/Lagos for Nigeria." />
               <TextField label="Currency" value={detail.data.baseCurrency} readOnly disabled hint="Naira is the default currency." />
+              <TextField
+                label="Web address name"
+                value={detail.data.slug}
+                readOnly
+                disabled
+                hint="Used in your public listings link. Give it to our support team if they ask."
+              />
             </fieldset>
             {canEdit && (
               <div className="flex items-center gap-3">

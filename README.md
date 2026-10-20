@@ -3,7 +3,7 @@
 A multi-company property management platform for Nigerian property managers and landlords.
 It follows the design in *Property Management System: Requirements & Technical Design v1.1*.
 
-**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) Phase 3 (properties, units, owners and tenants) the first part of Phase 4 (leases) the first part of Phase 5 (maintenance and vendors), the owner and tenant portals, documents and photos, public listings with enquiries and viewings, operational reports, and two-step sign-in. No money features yet: invoices, payments and payouts wait for the accountant and tax adviser to sign off the [finance design](https://claude.ai/code/artifact/59369177-0d67-4085-a6e6-054ed378947e).**
+**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) Phase 3 (properties, units, owners and tenants) the first part of Phase 4 (leases) the first part of Phase 5 (maintenance and vendors), the owner and tenant portals, documents and photos, public listings with enquiries and viewings, operational reports, two-step sign-in, and admin-approved support access. No money features yet: invoices, payments and payouts wait for the accountant and tax adviser to sign off the [finance design](https://claude.ai/code/artifact/59369177-0d67-4085-a6e6-054ed378947e).**
 
 ## What works today
 
@@ -46,6 +46,13 @@ It follows the design in *Property Management System: Requirements & Technical D
 - **Enquiries** from the public form (with a hidden field that quietly drops spam bots) or added by staff for phone, walk-in or referral contacts. Each new web enquiry is emailed to the listing's agent, else the property manager, else the company admins.
 - **Viewings** are booked against an enquiry with a time (Lagos) and agent, then marked viewed, no-show or cancelled. Enquiries move through New, Contacted, Viewing booked, Applied, Won or Lost.
 - **Who sees what.** `Listings.Manage` creates and publishes; `Leads.Manage` works enquiries. A member whose only listing role is Agent sees just the listings assigned to them and can't reassign them. Starting a lease on the unit closes its listing as let.
+
+### Support access (design 4.7)
+
+- Platform support has no standing access to any company's data. From **Support desk** they ask a company, by its web address name (shown under Settings), for read-only access for 1 to 24 hours, with a reason. The company's admins are emailed.
+- An Organization Admin approves, declines or ends it under **Team, Support access**. Access starts on approval and ends on its own when the hours run out.
+- While it lasts, support sees the company like a read-only staff member with no identity numbers (NIN, BVN). Any change is refused, and every page they open, every blocked change and each step of the grant is in the company's audit log. Support sees a banner with the end time.
+- Who counts as platform support is set in the database (`AspNetUsers.IsPlatformAdmin`); there is deliberately no screen for it. They must have two-step sign-in on to ask.
 
 ### Reports (no money yet)
 
@@ -132,9 +139,10 @@ Emails (invitations, password resets) are only logged in development. The person
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 92 unit + 98 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
-cd frontend && npm test          # 43 component and client tests
-cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running)
+cd backend && dotnet test        # 98 unit + 100 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd frontend && npm test          # 45 component and client tests
+cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running; the support test
+                                 # marks a user as platform support with docker exec on the mssql container, or PMS_E2E_SQLCMD)
 ```
 
 Each integration test class creates its own database and drops it afterwards.
@@ -149,6 +157,10 @@ Each integration test class creates its own database and drops it afterwards.
 | POST | /api/v1/auth/login/two-factor, /login/recovery-code | Second sign-in step after `login` returns `requiresTwoFactor` |
 | GET | /api/v1/auth/two-factor | Whether it is on, required, and recovery codes left |
 | POST | /api/v1/auth/two-factor/setup, /enable, /recovery-codes, /disable | Set up the app, turn on with a code, new codes, turn off with the password |
+| GET, POST | /api/v1/platform/support-grants | Platform support: my requests; ask a company (`organization` = web address name, `reason`, `hours`) |
+| POST | /api/v1/platform/support-grants/{id}/end | Platform support: end access early or withdraw a request |
+| GET | /api/v1/support-grants | Admin: requests for this organization |
+| POST | /api/v1/support-grants/{id}/approve, /decline, /revoke | Admin: answer a request or end access |
 | POST | /api/v1/auth/forgot-password, /reset-password | |
 | GET, POST | /api/v1/organizations | Mine; create another |
 | GET, PUT | /api/v1/organizations/{id} | Settings |
@@ -238,7 +250,7 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 
 - A real email provider (invitations and resets are only logged).
 - SQL Server Row-Level Security as an extra isolation layer.
-- Platform admin area, support-access grants and subscription billing.
+- Platform admin area and subscription billing. Support access is read-only only; a write option needs a decision on what support may change.
 - Organization-defined custom roles (roles are fixed in code for now).
 - The audit table is append-only in code; also deny UPDATE and DELETE to the app's database login.
 - Data Protection keys (which encrypt identity numbers and sign-in cookies) are stored in the `DataProtectionKeys` table. In production also encrypt the keys themselves, for example with `ProtectKeysWithAzureKeyVault` or a certificate, so a database copy alone can't decrypt NIN or BVN.

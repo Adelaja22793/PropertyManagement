@@ -49,5 +49,6 @@ export const StaffRoles = [
 
 export function roleLabel(role: string): string {
   if (role === 'Owner') return 'Property owner'
+  if (role === 'PlatformSupport') return 'Platform support'
   return StaffRoles.find((r) => r.value === role)?.label ?? role
 }

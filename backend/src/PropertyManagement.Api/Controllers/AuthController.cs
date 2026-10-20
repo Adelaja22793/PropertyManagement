@@ -7,6 +7,7 @@ using PropertyManagement.Api.Contracts;
 using PropertyManagement.Api.Infrastructure;
 using PropertyManagement.Application.Abstractions;
 using PropertyManagement.Application.Organizations;
+using PropertyManagement.Application.Platform;
 using PropertyManagement.Domain.Auditing;
 using PropertyManagement.Domain.Organizations;
 using PropertyManagement.Infrastructure.Identity;
@@ -26,7 +27,8 @@ public sealed class AuthController(
     IAuditLogger audit,
     IEmailSender email,
     ICurrentUser currentUser,
-    TwoFactorPolicy twoFactor) : ControllerBase
+    TwoFactorPolicy twoFactor,
+    SupportAccessService support) : ControllerBase
 {
     [HttpPost("register")]
     [AllowAnonymous]
@@ -213,9 +215,16 @@ public sealed class AuthController(
         return NoContent();
     }
 
-    private async Task<MeResponse> BuildMeAsync(AppUser user, CancellationToken ct) =>
-        new(user.Id, user.Email!, user.FullName, user.IsPlatformAdmin, await organizations.ListForUserAsync(user.Id, ct),
+    private async Task<MeResponse> BuildMeAsync(AppUser user, CancellationToken ct)
+    {
+        var own = await organizations.ListForUserAsync(user.Id, ct);
+        // Platform support also sees the organizations an approved grant opens to them, unless they are a member there.
+        var viaSupport = user.IsPlatformAdmin
+            ? (await support.ListOpenOrganizationsAsync(user.Id, ct)).Where(s => own.All(o => o.Id != s.Id))
+            : [];
+        return new(user.Id, user.Email!, user.FullName, user.IsPlatformAdmin, [.. own, .. viaSupport],
             user.TwoFactorEnabled, twoFactor.GraceDays);
+    }
 
     private ActionResult ValidationProblem(string message)
     {
