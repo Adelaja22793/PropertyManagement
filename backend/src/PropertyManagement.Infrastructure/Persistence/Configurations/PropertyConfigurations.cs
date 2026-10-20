@@ -149,6 +149,7 @@ internal sealed class ManagementAgreementConfiguration : IEntityTypeConfiguratio
         b.Property(x => x.FeeValue).HasPrecision(18, 2);
         b.Property(x => x.LettingFeePercent).HasPrecision(5, 2);
         b.Property(x => x.ReserveAmount).HasPrecision(18, 2);
+        b.Property(x => x.RepairApprovalLimit).HasPrecision(18, 2);
         b.Property(x => x.Notes).HasMaxLength(2000);
         b.HasIndex(x => new { x.OwnerId, x.PropertyId, x.StartDate });
         b.Property(x => x.RowVersion).IsRowVersion();

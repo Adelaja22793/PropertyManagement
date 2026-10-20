@@ -8,6 +8,7 @@ using PropertyManagement.Application.Common;
 using PropertyManagement.Domain.Auditing;
 using PropertyManagement.Domain.Common;
 using PropertyManagement.Domain.Leases;
+using PropertyManagement.Domain.Maintenance;
 using PropertyManagement.Domain.Organizations;
 using PropertyManagement.Domain.Owners;
 using PropertyManagement.Domain.Platform;
@@ -46,6 +47,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentOrgani
     public DbSet<LeaseNotice> LeaseNotices => Set<LeaseNotice>();
     public DbSet<LeaseInspection> LeaseInspections => Set<LeaseInspection>();
     public DbSet<LeaseReminder> LeaseReminders => Set<LeaseReminder>();
+    public DbSet<Vendor> Vendors => Set<Vendor>();
+    public DbSet<MaintenanceRequest> MaintenanceRequests => Set<MaintenanceRequest>();
+    public DbSet<MaintenanceUpdate> MaintenanceUpdates => Set<MaintenanceUpdate>();
 
     /// <summary>Data Protection keys used to encrypt identity numbers. Shared by all API instances.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();

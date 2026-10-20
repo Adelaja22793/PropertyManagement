@@ -612,6 +612,257 @@ namespace PropertyManagement.Infrastructure.Persistence.Migrations
                     b.ToTable("LeaseTenants", (string)null);
                 });
 
+            modelBuilder.Entity("PropertyManagement.Domain.Maintenance.MaintenanceRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("ActualCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("ApprovalLimit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("ApprovedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("AssignedUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("ClosedReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateOnly?>("CompletedOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("CompletionNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<decimal?>("EstimateAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("EstimateNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("OwnerApprovalNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("OwnerApprovalRecordedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ReportedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TenantFeedback")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("TenantRating")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("UnitId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Urgency")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid?>("VendorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApprovedByUserId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("AssignedUserId", "Status");
+
+                    b.HasIndex("OrganizationId", "Number")
+                        .IsUnique();
+
+                    b.HasIndex("OrganizationId", "PropertyId");
+
+                    b.HasIndex("OrganizationId", "TenantId");
+
+                    b.HasIndex("OrganizationId", "UnitId");
+
+                    b.HasIndex("OrganizationId", "VendorId");
+
+                    b.HasIndex("PropertyId", "Status");
+
+                    b.HasIndex("OrganizationId", "Status", "Urgency");
+
+                    b.ToTable("MaintenanceRequests", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_MaintenanceRequests_Rating", "[TenantRating] IS NULL OR [TenantRating] BETWEEN 1 AND 5");
+                        });
+                });
+
+            modelBuilder.Entity("PropertyManagement.Domain.Maintenance.MaintenanceUpdate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("AtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("FromStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Text")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ByUserId");
+
+                    b.HasIndex("OrganizationId", "RequestId");
+
+                    b.HasIndex("RequestId", "Sequence")
+                        .IsUnique();
+
+                    b.ToTable("MaintenanceUpdates", (string)null);
+                });
+
+            modelBuilder.Entity("PropertyManagement.Domain.Maintenance.Vendor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ContactName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Trade")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId", "Name");
+
+                    b.ToTable("Vendors", (string)null);
+                });
+
             modelBuilder.Entity("PropertyManagement.Domain.Organizations.Branch", b =>
                 {
                     b.Property<Guid>("Id")
@@ -929,6 +1180,10 @@ namespace PropertyManagement.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid?>("PropertyId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("RepairApprovalLimit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("ReserveAmount")
                         .HasPrecision(18, 2)
@@ -1953,6 +2208,66 @@ namespace PropertyManagement.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("PropertyManagement.Domain.Maintenance.MaintenanceRequest", b =>
+                {
+                    b.HasOne("PropertyManagement.Infrastructure.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("ApprovedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PropertyManagement.Infrastructure.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PropertyManagement.Infrastructure.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PropertyManagement.Domain.Properties.Property", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "PropertyId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PropertyManagement.Domain.Tenants.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "TenantId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PropertyManagement.Domain.Properties.PropertyUnit", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "UnitId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PropertyManagement.Domain.Maintenance.Vendor", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "VendorId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("PropertyManagement.Domain.Maintenance.MaintenanceUpdate", b =>
+                {
+                    b.HasOne("PropertyManagement.Infrastructure.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("ByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PropertyManagement.Domain.Maintenance.MaintenanceRequest", null)
+                        .WithMany("Updates")
+                        .HasForeignKey("OrganizationId", "RequestId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("PropertyManagement.Domain.Organizations.Branch", b =>
                 {
                     b.HasOne("PropertyManagement.Domain.Organizations.Organization", null)
@@ -2193,6 +2508,11 @@ namespace PropertyManagement.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("PropertyManagement.Domain.Leases.LeaseInspection", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("PropertyManagement.Domain.Maintenance.MaintenanceRequest", b =>
+                {
+                    b.Navigation("Updates");
                 });
 
             modelBuilder.Entity("PropertyManagement.Domain.Organizations.OrganizationMembership", b =>

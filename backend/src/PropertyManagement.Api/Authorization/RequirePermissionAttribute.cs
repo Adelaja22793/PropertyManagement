@@ -12,6 +12,11 @@ public sealed class RequirePermissionAttribute(string permission) : AuthorizeAtt
     public const string PolicyPrefix = "permission:";
 }
 
+/// <summary>Requires at least one of the listed permissions. The service then decides which records the caller may act on.</summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+public sealed class RequireAnyPermissionAttribute(params string[] permissions)
+    : AuthorizeAttribute(RequirePermissionAttribute.PolicyPrefix + string.Join('|', permissions));
+
 public sealed class PermissionRequirement(string permission) : IAuthorizationRequirement
 {
     public string Permission { get; } = permission;
