@@ -19,6 +19,11 @@ public sealed class PropertiesController(PropertyService properties) : Controlle
         [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken ct = default) =>
         properties.SearchAsync(new PropertySearch(search, branchId, status, includeArchived), new PageRequest(page, pageSize), ct);
 
+    /// <summary>Staff who can be assigned as a property's manager.</summary>
+    [HttpGet("manager-options")]
+    [RequirePermission(Permissions.Properties.Update)]
+    public Task<IReadOnlyList<StaffOptionDto>> ManagerOptions(CancellationToken ct) => properties.ListManagerOptionsAsync(ct);
+
     [HttpGet("{id:guid}")]
     [RequirePermission(Permissions.Properties.View)]
     public Task<PropertyDetailDto> Get(Guid id, CancellationToken ct) => properties.GetAsync(id, ct);

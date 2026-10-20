@@ -47,3 +47,5 @@ public sealed record OwnerShareInput(Guid OwnerId, decimal SharePercent);
 
 /// <summary>Replaces the property's owners from <see cref="EffectiveFrom"/>. Shares must total 100%.</summary>
 public sealed record SetOwnershipRequest(DateOnly EffectiveFrom, IReadOnlyList<OwnerShareInput> Shares);
+
+public sealed record StaffOptionDto(Guid UserId, string FullName);

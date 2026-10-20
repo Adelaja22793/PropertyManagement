@@ -169,6 +169,17 @@ public sealed class PropertyService(
         return await OwnershipAsync(propertyId, ct);
     }
 
+    /// <summary>Active staff who can be made a property's manager. Names only, so it needs no Users permission.</summary>
+    public async Task<IReadOnlyList<StaffOptionDto>> ListManagerOptionsAsync(CancellationToken ct)
+    {
+        var staffRoles = Roles.StaffRoles.ToArray();
+        var userIds = await db.Memberships
+            .Where(m => m.Status == MembershipStatus.Active && m.Roles.Any(r => staffRoles.Contains(r.RoleName)))
+            .Select(m => m.UserId).ToListAsync(ct);
+        var people = await users.GetAsync(userIds, ct);
+        return people.Values.Select(u => new StaffOptionDto(u.Id, u.FullName)).OrderBy(u => u.FullName).ToList();
+    }
+
     internal async Task<Property> LoadAsync(Guid id, CancellationToken ct) =>
         await access.VisibleProperties().SingleOrDefaultAsync(p => p.Id == id, ct) ?? throw new NotFoundException("Property");
 
@@ -181,7 +192,7 @@ public sealed class PropertyService(
 
     private async Task<OwnershipDto> OwnershipAsync(Guid propertyId, CancellationToken ct)
     {
-        var today = DateOnly.FromDateTime(clock.UtcNow);
+        var today = clock.TodayInNigeria();
         var rows = await db.PropertyOwnerships.Where(o => o.PropertyId == propertyId)
             .Join(db.Owners, o => o.OwnerId, w => w.Id, (o, w) => new { o, w.Name })
             .OrderByDescending(x => x.o.EffectiveFrom).ThenByDescending(x => x.o.SharePercent)

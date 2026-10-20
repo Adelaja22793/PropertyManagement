@@ -1,10 +1,14 @@
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useSession } from './session'
-import { Permissions } from '../lib/permissions'
+import { Permissions, PortalRoles } from '../lib/permissions'
+import { PortalHome } from '../features/portal/PortalHome'
 
 const nav = [
   { to: '/app', label: 'Dashboard', end: true, permission: Permissions.organizationView },
+  { to: '/app/properties', label: 'Properties', permission: Permissions.propertiesView },
+  { to: '/app/owners', label: 'Owners', permission: Permissions.ownersView },
+  { to: '/app/tenants', label: 'Tenants', permission: Permissions.tenantsView },
   { to: '/app/branches', label: 'Branches', permission: Permissions.branchesView },
   { to: '/app/team', label: 'Team', permission: Permissions.usersView },
   { to: '/app/audit', label: 'Audit log', permission: Permissions.auditView },
@@ -17,7 +21,9 @@ export function AppLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
   if (!me || !organization) return null
 
-  const links = nav.filter((item) => can(item.permission))
+  // Owners and tenants invited to a portal have no staff permissions; they never see staff pages.
+  const portalOnly = organization.roles.length > 0 && organization.roles.every((r) => (PortalRoles as readonly string[]).includes(r))
+  const links = portalOnly ? [{ to: '/app', label: 'Home', end: true }] : nav.filter((item) => can(item.permission))
 
   return (
     <div className="flex min-h-full flex-col md:flex-row">
@@ -50,7 +56,7 @@ export function AppLayout() {
               {item.label}
             </NavLink>
           ))}
-          <p className="px-3 pt-4 text-xs text-slate-400">Properties, tenants, leases and rent arrive in the next phases.</p>
+          {!portalOnly && <p className="px-3 pt-4 text-xs text-slate-400">Leases, rent and payouts arrive in the next phases.</p>}
         </nav>
       </aside>
 
@@ -94,7 +100,13 @@ export function AppLayout() {
           </div>
         </header>
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
-          <Outlet key={organization.id} />
+          {portalOnly ? (
+            <PortalHome key={organization.id} />
+          ) : (
+            <Suspense fallback={<p className="text-sm text-slate-500">Loading…</p>}>
+              <Outlet key={organization.id} />
+            </Suspense>
+          )}
         </main>
       </div>
     </div>

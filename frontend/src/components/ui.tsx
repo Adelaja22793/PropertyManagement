@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
 import { forwardRef } from 'react'
 import { ApiError } from '../lib/api'
 
@@ -72,6 +72,29 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HT
   },
 )
 
+export const TextAreaField = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement> & FieldProps>(
+  function TextAreaField({ label, error, hint, id, rows = 3, ...props }, ref) {
+    const inputId = id ?? props.name
+    return (
+      <div className="space-y-1">
+        <label htmlFor={inputId} className="block text-sm font-medium text-slate-700">
+          {label}
+        </label>
+        <textarea
+          ref={ref}
+          id={inputId}
+          rows={rows}
+          aria-invalid={error ? true : undefined}
+          className="block w-full rounded-md border-0 px-3 py-2 text-sm ring-1 ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-brand-500 aria-invalid:ring-red-400"
+          {...props}
+        />
+        {hint && !error && <p className="text-xs text-slate-500">{hint}</p>}
+        {error && <p className="text-xs text-red-600">{error}</p>}
+      </div>
+    )
+  },
+)
+
 export function ErrorBox({ error }: { error: unknown }) {
   if (!error) return null
   const messages = error instanceof ApiError ? error.messages : ['Something went wrong. Please try again.']
@@ -122,4 +145,68 @@ export function Badge({ children, tone = 'slate' }: { children: ReactNode; tone?
 
 export function Empty({ children }: { children: ReactNode }) {
   return <p className="py-6 text-center text-sm text-slate-500">{children}</p>
+}
+
+/** Previous/next paging under a list. */
+export function Pager({
+  page,
+  pageSize,
+  totalCount,
+  onPage,
+}: {
+  page: number
+  pageSize: number
+  totalCount: number
+  onPage: (page: number) => void
+}) {
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  if (totalPages <= 1) return null
+  return (
+    <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+      <span>
+        Page {page} of {totalPages}
+      </span>
+      <div className="flex gap-2">
+        <Button variant="secondary" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+          Previous
+        </Button>
+        <Button variant="secondary" disabled={page >= totalPages} onClick={() => onPage(page + 1)}>
+          Next
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/** A search box for the top of a list. */
+export function SearchInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <div className="mb-4">
+      <label className="sr-only" htmlFor="list-search">
+        {label}
+      </label>
+      <input
+        id="list-search"
+        type="search"
+        placeholder={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="block w-full rounded-md border-0 px-3 py-2 text-sm ring-1 ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-brand-500 sm:max-w-sm"
+      />
+    </div>
+  )
+}
+
+/** Label/value pairs for a detail page. Empty values show a dash. */
+export function DetailList({ items }: { items: { label: string; value: ReactNode }[] }) {
+  return (
+    <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+      {items.map((i) => (
+        <div key={i.label} className="min-w-0">
+          <dt className="text-xs font-medium text-slate-500">{i.label}</dt>
+          <dd className="mt-0.5 break-words text-slate-800">{i.value === null || i.value === undefined || i.value === '' ? '–' : i.value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
 }

@@ -396,4 +396,21 @@ public sealed class PropertiesAndPeopleTests(ApiFactory factory) : IClassFixture
         var updated = await response.Content.ReadFromJsonAsync<JsonElement>(TestClient.Json);
         Assert.Equal(["Agent", "PropertyManager"], updated.GetProperty("roles").EnumerateArray().Select(r => r.GetString()));
     }
+
+    [Fact]
+    public async Task Manager_options_list_staff_but_not_portal_users()
+    {
+        var manager = await _admin.AddMemberAsync(factory, "PropertyManager");
+        var ownerEmail = $"{Guid.NewGuid():N}@landlord.example.com";
+        var ownerId = await _admin.CreateOwnerAsync("Option Owner", ownerEmail);
+        var invite = await _admin.PostAsync($"/api/v1/owners/{ownerId}/portal-invite", new { });
+        var owner = await TestClient.RegisterWithInvitationAsync(factory, ownerEmail, invite.GetProperty("acceptToken").GetString()!);
+
+        // A property manager can't list members, but can still see who may manage a property.
+        var options = await manager.GetAsync("/api/v1/properties/manager-options");
+        var ids = options.EnumerateArray().Select(o => o.GetProperty("userId").GetGuid()).ToList();
+        Assert.Contains(manager.UserId, ids);
+        Assert.Contains(_admin.UserId, ids);
+        Assert.DoesNotContain(owner.UserId, ids);
+    }
 }

@@ -171,7 +171,7 @@ public sealed class OwnerService(
     internal async Task<Owner> LoadAsync(Guid id, CancellationToken ct) =>
         await db.Owners.SingleOrDefaultAsync(o => o.Id == id, ct) ?? throw new NotFoundException("Owner");
 
-    private DateOnly Today => DateOnly.FromDateTime(clock.UtcNow);
+    private DateOnly Today => clock.TodayInNigeria();
 
     private async Task ValidateAgreementAsync(ManagementAgreement agreement, CancellationToken ct)
     {

@@ -41,3 +41,12 @@ describe('api client', () => {
     expect(error.messages).toEqual(['An organization must keep at least one Organization Admin.'])
   })
 })
+
+describe('api client with a non-JSON error', () => {
+  it('still raises an ApiError with the status', async () => {
+    globalThis.fetch = vi.fn(async () => new Response('<html>Bad gateway</html>', { status: 502 })) as typeof fetch
+    const error = (await api('GET', '/api/v1/owners').catch((e: unknown) => e)) as ApiError
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error.messages).toEqual(['Request failed (502)'])
+  })
+})
