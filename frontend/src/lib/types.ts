@@ -325,3 +325,85 @@ export interface ScreeningCheck {
   checkedByName: string | null
   checkedAtUtc: string
 }
+
+export const LeaseStatuses = ['Draft', 'Active', 'Renewed', 'Ended', 'Terminated', 'Cancelled'] as const
+export type LeaseStatus = (typeof LeaseStatuses)[number]
+export const LeaseStages = ['Draft', 'Upcoming', 'Active', 'Expiring', 'HoldingOver', 'Renewed', 'Ended', 'Terminated', 'Cancelled'] as const
+export type LeaseStage = (typeof LeaseStages)[number]
+export const LeaseChargeTypes = ['ServiceCharge', 'AgencyFee', 'LegalFee', 'CautionDeposit', 'StampDuty', 'Other'] as const
+export type LeaseChargeType = (typeof LeaseChargeTypes)[number]
+export const ChargeRecurrences = ['OneOff', 'EachPeriod'] as const
+export type ChargeRecurrence = (typeof ChargeRecurrences)[number]
+
+export interface LeaseSummary {
+  id: string
+  reference: string
+  propertyId: string
+  propertyCode: string
+  propertyName: string
+  unitId: string
+  unitCode: string
+  primaryTenantId: string | null
+  primaryTenantName: string | null
+  tenantCount: number
+  startDate: string
+  endDate: string
+  rentAmount: number
+  currency: string
+  billingFrequency: BillingFrequency
+  status: LeaseStatus
+  stage: LeaseStage
+  daysToExpiry: number | null
+  renewalLeaseId: string | null
+}
+
+export interface LeaseCharge {
+  id?: string
+  type: LeaseChargeType
+  description: string | null
+  amount: number
+  recurrence: ChargeRecurrence
+}
+
+export interface LinkedLease {
+  id: string
+  reference: string
+  status: LeaseStatus
+  startDate: string
+  endDate: string
+  rentAmount: number
+}
+
+export interface LeaseDetail {
+  id: string
+  reference: string
+  propertyId: string
+  propertyCode: string
+  propertyName: string
+  unitId: string
+  unitCode: string
+  status: LeaseStatus
+  stage: LeaseStage
+  daysToExpiry: number | null
+  startDate: string
+  endDate: string
+  rentAmount: number
+  currency: string
+  billingFrequency: BillingFrequency
+  dueDaysBeforePeriod: number
+  graceDays: number
+  noticePeriodDays: number | null
+  holdoverRentAmount: number | null
+  renewalTerms: string | null
+  notes: string | null
+  tenants: { tenantId: string; name: string; phone: string | null; email: string | null; isPrimary: boolean }[]
+  guarantors: { guarantorId: string; tenantId: string; fullName: string; phone: string | null; signedFormReceived: boolean }[]
+  charges: LeaseCharge[]
+  previousLease: LinkedLease | null
+  renewalLease: LinkedLease | null
+  createdAtUtc: string
+  activatedAtUtc: string | null
+  activatedByName: string | null
+  moveOutDate: string | null
+  endReason: string | null
+}

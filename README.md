@@ -3,7 +3,7 @@
 A multi-company property management platform for Nigerian property managers and landlords.
 It follows the design in *Property Management System: Requirements & Technical Design v1.1*.
 
-**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) and Phase 3 (properties, units, owners and tenants). No money features yet.**
+**Status: Phases 1 and 2 (foundation, sign-in, organization isolation and audit) Phase 3 (properties, units, owners and tenants) and the first part of Phase 4 (leases). No money features yet: invoices, payments and payouts wait for the accountant and tax adviser to sign off the [finance design](https://claude.ai/code/artifact/59369177-0d67-4085-a6e6-054ed378947e).**
 
 ## What works today
 
@@ -29,6 +29,16 @@ It follows the design in *Property Management System: Requirements & Technical D
 - **Identity details (KYC).** NIN or other ID and BVN are encrypted with ASP.NET Core Data Protection before they are stored. Everyone with `Tenants.View` sees only the ID type and last four digits; the full numbers need `Tenants.ViewKyc`, and every reveal is audited. Numbers never go in the audit log.
 - **Guarantors** and **screening checks** (employer, previous landlord, references) recorded against the tenant, with who checked and the outcome.
 - **Portal invitations** for owners and tenants. Accepting links the login to that owner or tenant record. Portal users have no staff permissions and are not listed as team members; the portal screens themselves come later.
+
+### Leases (Phase 4, no money yet)
+
+- **Drafts.** A lease names a unit, one or more tenants (the first is the primary tenant), guarantors who belong to those tenants, the term, rent per period, billing frequency, when rent falls due, grace and notice periods, holdover rent, renewal terms and other charges (caution deposit, agency and legal fees, stamp duty, service charge, others). Drafts can be changed freely and don't affect the unit.
+- **Activating** fixes the terms and takes the unit. A unit can't have two leases on the same day. A lease past its end date with the tenant still in (holding over) keeps the unit until the move-out is recorded.
+- **Stages** come from the dates: upcoming, active, expiring (within 90 days), holding over, then renewed, ended, terminated or cancelled.
+- **Renewing** drafts the next lease for the same unit, tenants and guarantors, starting the day after the current one ends, with the new rent (rent review). Recurring charges carry over; move-in charges don't. Activating the renewal closes the current lease as renewed.
+- **Ending** records the move-out date. Before the end date it is an early termination and needs a reason. The unit is free from the move-out day. Nothing is deleted.
+- **Occupancy is driven by leases.** Activating, renewing or ending a lease updates the unit (occupied, reserved for a future start, or vacant), and an hourly job catches up date changes. Staff can't set occupancy by hand, or archive the unit, while it has an active lease.
+- Leases follow property visibility, so a property manager sees only the leases on their properties.
 
 ## How organization isolation works
 
@@ -75,9 +85,9 @@ Emails (invitations, password resets) are only logged in development. The person
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 33 unit + 60 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
-cd frontend && npm test          # 27 component and client tests
-cd frontend && npm run e2e       # browser journey on desktop and phone sizes (needs the API running)
+cd backend && dotnet test        # 51 unit + 71 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd frontend && npm test          # 31 component and client tests
+cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running)
 ```
 
 Each integration test class creates its own database and drops it afterwards.
@@ -123,6 +133,12 @@ Each integration test class creates its own database and drops it afterwards.
 | PUT, DELETE | /api/v1/tenants/{id}/guarantors/{guarantorId} | |
 | GET, POST | /api/v1/tenants/{id}/screening | |
 | POST | /api/v1/tenants/{id}/portal-invite | |
+| GET, POST | /api/v1/leases | Search (`search`, `stage`, `propertyId`, `unitId`, `tenantId`, `endingWithinDays`, paging); create a draft |
+| GET, PUT | /api/v1/leases/{id} | PUT changes a draft only |
+| POST | /api/v1/leases/{id}/activate | Draft to active; refuses overlapping dates |
+| POST | /api/v1/leases/{id}/cancel | Discard a draft |
+| POST | /api/v1/leases/{id}/renew | Draft the next lease (`Leases.Renew`) |
+| POST | /api/v1/leases/{id}/end | Record the move-out (`Leases.Terminate`); before the end date needs a reason |
 | GET | /api/v1/plans | Public |
 | GET | /health | |
 
@@ -137,6 +153,9 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 - Organization-defined custom roles (roles are fixed in code for now).
 - The audit table is append-only in code; also deny UPDATE and DELETE to the app's database login.
 - Data Protection keys (which encrypt identity numbers and sign-in cookies) are stored in the `DataProtectionKeys` table. In production also encrypt the keys themselves, for example with `ProtectKeysWithAzureKeyVault` or a certificate, so a database copy alone can't decrypt NIN or BVN.
-- Leases, guarantor-to-lease links, inspections and unit occupancy driven by leases come with Phase 4. Until then occupancy is set by hand.
+- Invoices, payments, receipts, deposits held and owner payouts (rest of Phase 4) wait for the finance design sign-off.
+- Lease expiry reminders by email (90, 60 and 30 days). The data is there (`endingWithinDays`, the "Ending in 90 days" dashboard card) but no emails are sent yet.
+- Statutory notices (notice to quit, notice of owner's intention to recover possession), move-in and move-out inspections, generated tenancy agreements and shared occupancy of one unit.
+- Two people activating overlapping leases at the very same moment could both succeed; add a database lock or check if that becomes a real risk.
 - Owner and tenant portal screens (the invitations and record links are in place).
 - Documents and photos for properties, owners and tenants (needs file storage with virus scanning, design 3.5).

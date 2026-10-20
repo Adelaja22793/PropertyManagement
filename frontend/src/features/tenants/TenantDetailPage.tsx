@@ -11,6 +11,7 @@ import { TenantForm } from './TenantForm'
 import { KycPanel } from './KycPanel'
 import { GuarantorsPanel } from './GuarantorsPanel'
 import { ScreeningPanel } from './ScreeningPanel'
+import { LeasesPanel } from '../leases/LeasesPage'
 
 export function TenantDetailPage() {
   const { id = '' } = useParams()
@@ -78,6 +79,7 @@ export function TenantDetailPage() {
             ]}
           />
         </Card>
+        {can(Permissions.leasesView) && <LeasesPanel filter={`tenantId=${t.id}`} newLeaseQuery={`tenantId=${t.id}`} />}
         <KycPanel tenantId={t.id} kyc={t.kyc} />
         <GuarantorsPanel tenantId={t.id} />
         <ScreeningPanel tenantId={t.id} />

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -18,6 +19,7 @@ export function UnitsPanel({ propertyId, archived }: { propertyId: string; archi
   const queryClient = useQueryClient()
   const canEdit = !archived && can(Permissions.propertiesUpdate)
   const canArchive = !archived && can(Permissions.propertiesArchive)
+  const canLet = !archived && can(Permissions.leasesCreate)
   const [showArchived, setShowArchived] = useState(false)
   const [editing, setEditing] = useState<Unit | 'new' | null>(null)
   const units = useQuery({
@@ -80,12 +82,21 @@ export function UnitsPanel({ propertyId, archived }: { propertyId: string; archi
                     {u.isArchived ? <Badge>Archived</Badge> : <Badge tone={statusTone(u.occupancyStatus)}>{u.occupancyStatus}</Badge>}
                   </td>
                   <td className="px-5 py-2.5 text-right whitespace-nowrap">
+                    {!u.isArchived && canLet && u.occupancyStatus === 'Vacant' && (
+                      <Link
+                        to={`/app/leases/new?propertyId=${propertyId}&unitId=${u.id}`}
+                        aria-label={`Let unit ${u.code}`}
+                        className="rounded-md px-3.5 py-2 text-sm font-medium text-brand-700 hover:bg-slate-100"
+                      >
+                        Let
+                      </Link>
+                    )}
                     {!u.isArchived && canEdit && (
                       <Button variant="ghost" aria-label={`Edit unit ${u.code}`} onClick={() => setEditing(u)}>
                         Edit
                       </Button>
                     )}
-                    {!u.isArchived && canArchive && u.occupancyStatus !== 'Occupied' && (
+                    {!u.isArchived && canArchive && u.occupancyStatus !== 'Occupied' && u.occupancyStatus !== 'Reserved' && (
                       <Button
                         variant="ghost"
                         aria-label={`Archive unit ${u.code}`}

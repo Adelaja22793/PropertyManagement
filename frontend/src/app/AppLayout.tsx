@@ -9,6 +9,7 @@ const nav = [
   { to: '/app/properties', label: 'Properties', permission: Permissions.propertiesView },
   { to: '/app/owners', label: 'Owners', permission: Permissions.ownersView },
   { to: '/app/tenants', label: 'Tenants', permission: Permissions.tenantsView },
+  { to: '/app/leases', label: 'Leases', permission: Permissions.leasesView },
   { to: '/app/branches', label: 'Branches', permission: Permissions.branchesView },
   { to: '/app/team', label: 'Team', permission: Permissions.usersView },
   { to: '/app/audit', label: 'Audit log', permission: Permissions.auditView },
@@ -56,7 +57,7 @@ export function AppLayout() {
               {item.label}
             </NavLink>
           ))}
-          {!portalOnly && <p className="px-3 pt-4 text-xs text-slate-400">Leases, rent and payouts arrive in the next phases.</p>}
+          {!portalOnly && <p className="px-3 pt-4 text-xs text-slate-400">Rent, payments and payouts arrive once the finance design is signed off.</p>}
         </nav>
       </aside>
 
