@@ -46,11 +46,16 @@ describe('routing and access', () => {
 describe('portal users', () => {
   const ownerOrg = { ...agentOrg, roles: ['Owner'], permissions: [] }
 
-  it('see a portal landing page and no staff pages', async () => {
-    mockApi((url) => (url.endsWith('/auth/me') ? { status: 200, body: me([ownerOrg]) } : { status: 200, body: [] }))
+  it('see their portal and no staff pages', async () => {
+    mockApi((url) => {
+      if (url.endsWith('/auth/me')) return { status: 200, body: me([ownerOrg]) }
+      if (url.endsWith('/portal/owner'))
+        return { status: 200, body: { ownerName: 'Mrs Adebayo', organizationName: 'Agent Co', properties: [], openMaintenance: 0, awaitingYourApproval: 0 } }
+      return { status: 200, body: [] }
+    })
     renderApp('/app/properties')
 
-    expect(await screen.findByText('Your owner portal is coming soon.')).toBeInTheDocument()
+    expect(await screen.findByText('Welcome, Mrs Adebayo')).toBeInTheDocument()
     const nav = screen.getByRole('navigation', { name: 'Main' })
     expect(nav).toHaveTextContent('Home')
     expect(nav).not.toHaveTextContent('Properties')

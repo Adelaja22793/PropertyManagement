@@ -25,7 +25,14 @@ export function AppLayout() {
 
   // Owners and tenants invited to a portal have no staff permissions; they never see staff pages.
   const portalOnly = organization.roles.length > 0 && organization.roles.every((r) => (PortalRoles as readonly string[]).includes(r))
-  const links = portalOnly ? [{ to: '/app', label: 'Home', end: true }] : nav.filter((item) => (Array.isArray(item.permission) ? item.permission.some(can) : can(item.permission)))
+  // Staff who are also an owner or tenant reach their own portal from the menu.
+  const hasPortal = organization.roles.some((r) => (PortalRoles as readonly string[]).includes(r))
+  const links = portalOnly
+    ? [{ to: '/app', label: 'Home', end: true }]
+    : [
+        ...nav.filter((item) => (Array.isArray(item.permission) ? item.permission.some(can) : can(item.permission))),
+        ...(hasPortal ? [{ to: '/app/portal', label: 'My portal', end: false }] : []),
+      ]
 
   return (
     <div className="flex min-h-full flex-col md:flex-row">

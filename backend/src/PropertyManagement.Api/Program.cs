@@ -59,6 +59,7 @@ builder.Services.ConfigureApplicationCookie(o =>
 
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, PortalRoleHandler>();
 builder.Services.AddAuthorization();
 
 builder.Services.AddRateLimiter(o =>

@@ -17,6 +17,21 @@ public sealed class RequirePermissionAttribute(string permission) : AuthorizeAtt
 public sealed class RequireAnyPermissionAttribute(params string[] permissions)
     : AuthorizeAttribute(RequirePermissionAttribute.PolicyPrefix + string.Join('|', permissions));
 
+/// <summary>
+/// Requires a portal role (Owner or Tenant) in the selected organization. Portal roles carry no staff permissions;
+/// the portal service then limits the caller to the records their owner or tenant link reaches.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+public sealed class RequirePortalRoleAttribute(string role) : AuthorizeAttribute(PolicyPrefix + role)
+{
+    public const string PolicyPrefix = "portal-role:";
+}
+
+public sealed class PortalRoleRequirement(string role) : IAuthorizationRequirement
+{
+    public string Role { get; } = role;
+}
+
 public sealed class PermissionRequirement(string permission) : IAuthorizationRequirement
 {
     public string Permission { get; } = permission;
