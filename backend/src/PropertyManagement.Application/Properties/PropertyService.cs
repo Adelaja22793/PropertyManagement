@@ -88,13 +88,15 @@ public sealed class PropertyService(
         var property = await LoadAsync(propertyId, ct);
         var units = await db.Units.Where(u => u.PropertyId == propertyId && (includeArchived || !u.IsArchived))
             .OrderBy(u => u.Code).ToListAsync(ct);
-        return units.Select(u => ToDto(u, property.Code)).ToList();
+        var active = await db.Leases.Where(l => l.PropertyId == propertyId && l.Status == LeaseStatus.Active)
+            .GroupBy(l => l.UnitId).Select(g => new { g.Key, Count = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.Count, ct);
+        return units.Select(u => ToDto(u, property.Code, active.GetValueOrDefault(u.Id))).ToList();
     }
 
     public async Task<UnitDto> GetUnitAsync(Guid unitId, CancellationToken ct)
     {
         var (unit, property) = await LoadUnitAsync(unitId, ct);
-        return ToDto(unit, property.Code);
+        return ToDto(unit, property.Code, await ActiveLeasesAsync(unit.Id, ct));
     }
 
     public async Task<UnitDto> CreateUnitAsync(Guid propertyId, SaveUnitRequest request, CancellationToken ct)
@@ -108,22 +110,23 @@ public sealed class PropertyService(
         db.Units.Add(unit);
         audit.Record("unit.created", nameof(PropertyUnit), unit.Id.ToString(), details: new { Property = property.Code, unit.Code });
         await db.SaveChangesAsync(ct);
-        return ToDto(unit, property.Code);
+        return ToDto(unit, property.Code, 0);
     }
 
     public async Task<UnitDto> UpdateUnitAsync(Guid unitId, SaveUnitRequest request, CancellationToken ct)
     {
         var (unit, property) = await LoadUnitAsync(unitId, ct);
         property.EnsureNotArchived();
-        var before = ToDto(unit, property.Code);
-        if (request.OccupancyStatus != unit.OccupancyStatus
-            && await db.Leases.AnyAsync(l => l.UnitId == unit.Id && l.Status == LeaseStatus.Active, ct))
+        var activeLeases = await ActiveLeasesAsync(unit.Id, ct);
+        var before = ToDto(unit, property.Code, activeLeases);
+        if (request.OccupancyStatus != unit.OccupancyStatus && activeLeases > 0)
             throw new DomainException("This unit's occupancy comes from its lease. End or renew the lease instead.", "unit_has_lease");
         unit.Update(request.ToDetails(), request.OccupancyStatus);
+        await EnsureSharedLimitFitsAsync(unit, ct);
         await EnsureUniqueUnitCodeAsync(property.Id, unit.Code, unit.Id, ct);
-        audit.Record("unit.updated", nameof(PropertyUnit), unit.Id.ToString(), details: new { before, after = ToDto(unit, property.Code) });
+        audit.Record("unit.updated", nameof(PropertyUnit), unit.Id.ToString(), details: new { before, after = ToDto(unit, property.Code, activeLeases) });
         await db.SaveChangesAsync(ct);
-        return ToDto(unit, property.Code);
+        return ToDto(unit, property.Code, activeLeases);
     }
 
     public async Task<UnitDto> ArchiveUnitAsync(Guid unitId, CancellationToken ct)
@@ -134,7 +137,7 @@ public sealed class PropertyService(
         unit.Archive();
         audit.Record("unit.archived", nameof(PropertyUnit), unit.Id.ToString(), details: new { Property = property.Code, unit.Code });
         await db.SaveChangesAsync(ct);
-        return ToDto(unit, property.Code);
+        return ToDto(unit, property.Code, 0);
     }
 
     // Ownership
@@ -191,6 +194,21 @@ public sealed class PropertyService(
 
     internal async Task<Property> LoadAsync(Guid id, CancellationToken ct) =>
         await access.VisibleProperties().SingleOrDefaultAsync(p => p.Id == id, ct) ?? throw new NotFoundException("Property");
+
+    private Task<int> ActiveLeasesAsync(Guid unitId, CancellationToken ct) =>
+        db.Leases.CountAsync(l => l.UnitId == unitId && l.Status == LeaseStatus.Active, ct);
+
+    /// <summary>A shared unit's limit can't go below the number of leases already holding it on one day.</summary>
+    private async Task EnsureSharedLimitFitsAsync(PropertyUnit unit, CancellationToken ct)
+    {
+        var leases = await db.Leases.Where(l => l.UnitId == unit.Id && l.Status != LeaseStatus.Draft && l.Status != LeaseStatus.Cancelled)
+            .ToListAsync(ct);
+        var most = UnitCapacity.MostAtOnceFrom(clock.TodayInNigeria(), leases);
+        if (most > unit.MaxConcurrentLeases)
+            throw new DomainException(
+                $"{most} leases hold this unit at the same time, so it must take at least {most} at once. End some of them first.",
+                "shared_occupancy_in_use");
+    }
 
     private async Task<(PropertyUnit Unit, Property Property)> LoadUnitAsync(Guid unitId, CancellationToken ct)
     {
@@ -263,7 +281,7 @@ public sealed class PropertyService(
         p.Code, p.Name, p.Type, p.AddressLine, p.City, p.State, p.LocalGovernmentArea, p.BranchId, p.ManagerUserId, p.Status,
     };
 
-    private static UnitDto ToDto(PropertyUnit u, string propertyCode) => new(u.Id, u.PropertyId, propertyCode, u.Code, u.Type,
-        u.Floor, u.Bedrooms, u.Bathrooms, u.SizeSquareMetres, u.DefaultRent, u.Currency, u.BillingFrequency,
-        u.ServiceChargeSharePercent, u.OccupancyStatus, u.Amenities, u.Notes, u.IsArchived);
+    private static UnitDto ToDto(PropertyUnit u, string propertyCode, int activeLeases) => new(u.Id, u.PropertyId, propertyCode,
+        u.Code, u.Type, u.Floor, u.Bedrooms, u.Bathrooms, u.SizeSquareMetres, u.DefaultRent, u.Currency, u.BillingFrequency,
+        u.ServiceChargeSharePercent, u.OccupancyStatus, u.Amenities, u.Notes, u.IsArchived, u.SharedOccupancyLimit, activeLeases);
 }

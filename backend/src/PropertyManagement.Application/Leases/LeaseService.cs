@@ -100,7 +100,8 @@ public sealed partial class LeaseService(
             details: new { lease.Reference, Renews = previous?.Reference });
         await RefreshUnitsAsync([lease.UnitId], [lease, .. previous is null ? Array.Empty<Lease>() : [previous]], ct);
         // A let unit is no longer advertised; a renewal keeps the same tenant in, so there is nothing to close.
-        if (previous is null) await Listings.ListingService.CloseForLetUnitAsync(db, lease.UnitId, clock.UtcNow, ct);
+        if (previous is null && await IsFullFromAsync(unit, lease, ct))
+            await Listings.ListingService.CloseForLetUnitAsync(db, lease.UnitId, clock.UtcNow, ct);
         await db.SaveChangesAsync(ct);
         return await ToDetailAsync(lease, ct);
     }
@@ -286,23 +287,45 @@ public sealed partial class LeaseService(
             throw new NotFoundException("Tenant");
     }
 
-    /// <summary>A unit can't have two leases holding it on the same day. Drafts and cancelled leases don't count.</summary>
+    /// <summary>
+    /// A unit can't have two leases holding it on the same day, or more than its limit when it is shared. Drafts and
+    /// cancelled leases don't count.
+    /// </summary>
     private async Task EnsureNoOverlapAsync(Lease lease, CancellationToken ct)
     {
         var today = clock.TodayInNigeria();
+        var limit = await db.Units.Where(u => u.Id == lease.UnitId).Select(u => u.SharedOccupancyLimit ?? 1).SingleAsync(ct);
         var others = await db.Leases.Where(l => l.UnitId == lease.UnitId && l.Id != lease.Id && l.Id != lease.PreviousLeaseId
                                                 && l.Status != LeaseStatus.Draft && l.Status != LeaseStatus.Cancelled
                                                 && l.StartDate <= lease.EndDate)
             .ToListAsync(ct);
-        var clash = others.FirstOrDefault(o => o.BlocksUnitBetween(lease.StartDate, lease.EndDate, today));
-        if (clash is not null)
-        {
-            var until = clash.HoldsUnitUntil(today);
-            throw new DomainException(until is null
-                    ? $"This unit is still held by lease {clash.Reference}, which has passed its end date. End that lease first."
-                    : $"These dates overlap lease {clash.Reference} ({clash.StartDate:d MMM yyyy} to {until:d MMM yyyy}).",
+        if (UnitCapacity.FirstFullDay(lease.StartDate, lease.EndDate, others, limit, today) is not { } full) return;
+
+        if (limit > 1)
+            throw new DomainException(
+                $"This shared unit takes {limit} leases at once, and on {full.Day:d MMM yyyy} it already has {limit}: " +
+                $"{string.Join(", ", full.Holding.OrderBy(h => h.Number).Select(h => h.Reference))}.",
                 "lease_overlap");
-        }
+        var clash = full.Holding[0];
+        var until = clash.HoldsUnitUntil(today);
+        throw new DomainException(until is null
+                ? $"This unit is still held by lease {clash.Reference}, which has passed its end date. End that lease first."
+                : $"These dates overlap lease {clash.Reference} ({clash.StartDate:d MMM yyyy} to {until:d MMM yyyy}).",
+            "lease_overlap");
+    }
+
+    /// <summary>
+    /// True when the unit has no room left on the lease's first day once it is activated. A shared unit with places
+    /// left stays advertised.
+    /// </summary>
+    private async Task<bool> IsFullFromAsync(PropertyUnit unit, Lease lease, CancellationToken ct)
+    {
+        if (unit.SharedOccupancyLimit is null) return true;
+        var today = clock.TodayInNigeria();
+        var others = await db.Leases.Where(l => l.UnitId == unit.Id && l.Id != lease.Id
+                                                && l.Status != LeaseStatus.Draft && l.Status != LeaseStatus.Cancelled)
+            .ToListAsync(ct);
+        return UnitCapacity.FirstFullDay(lease.StartDate, lease.StartDate, others, unit.MaxConcurrentLeases - 1, today) is not null;
     }
 
     /// <summary>Recomputes occupancy for the given units. <paramref name="tracked"/> are leases already changed in memory.</summary>

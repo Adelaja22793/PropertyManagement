@@ -200,6 +200,10 @@ export interface Unit {
   amenities: string | null
   notes: string | null
   isArchived: boolean
+  /** How many leases may hold the unit at once when it is let room by room; null for an ordinary unit. */
+  sharedOccupancyLimit: number | null
+  /** Active leases on the unit, including upcoming and holding over. */
+  activeLeaseCount: number
 }
 
 export const PartyTypes = ['Individual', 'Company'] as const

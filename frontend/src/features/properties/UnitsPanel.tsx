@@ -13,6 +13,7 @@ import { enumLabel, formatNaira } from '../../lib/format'
 import { statusTone } from '../../lib/tones'
 import { blankToNull, numberOrNull, optionalAmount, optionalText, optionalWhole, requiredAmount } from '../../lib/validation'
 import { Badge, Button, Card, Empty, ErrorBox, SelectField, TextAreaField, TextField } from '../../components/ui'
+import { hasRoom, sharedLabel } from './sharedUnit'
 
 export function UnitsPanel({ propertyId, archived }: { propertyId: string; archived: boolean }) {
   const { can } = useSession()
@@ -44,9 +45,7 @@ export function UnitsPanel({ propertyId, archived }: { propertyId: string; archi
         )
       }
     >
-      {editing !== null && (
-        <UnitForm propertyId={propertyId} unit={editing === 'new' ? null : editing} onDone={() => setEditing(null)} />
-      )}
+      {editing !== null && <UnitForm propertyId={propertyId} unit={editing === 'new' ? null : editing} onDone={() => setEditing(null)} />}
       <ErrorBox error={units.error ?? archive.error} />
       {units.data?.length === 0 && <Empty>No units yet. Add flats, shops or rooms to let them.</Empty>}
       {!!units.data?.length && (
@@ -81,9 +80,10 @@ export function UnitsPanel({ propertyId, archived }: { propertyId: string; archi
                   </td>
                   <td className="px-3 py-2.5">
                     {u.isArchived ? <Badge>Archived</Badge> : <Badge tone={statusTone(u.occupancyStatus)}>{u.occupancyStatus}</Badge>}
+                    {!u.isArchived && sharedLabel(u) && <span className="block text-xs text-slate-500">{sharedLabel(u)}</span>}
                   </td>
                   <td className="px-5 py-2.5 text-right whitespace-nowrap">
-                    {!u.isArchived && canLet && u.occupancyStatus === 'Vacant' && (
+                    {!u.isArchived && canLet && hasRoom(u) && (
                       <Link
                         to={`/app/leases/new?propertyId=${propertyId}&unitId=${u.id}`}
                         aria-label={`Let unit ${u.code}`}
@@ -92,7 +92,7 @@ export function UnitsPanel({ propertyId, archived }: { propertyId: string; archi
                         Let
                       </Link>
                     )}
-                    {!u.isArchived && canList && u.occupancyStatus === 'Vacant' && (
+                    {!u.isArchived && canList && hasRoom(u) && (
                       <Link
                         to={`/app/listings/new?propertyId=${propertyId}&unitId=${u.id}`}
                         aria-label={`Advertise unit ${u.code}`}
@@ -131,19 +131,30 @@ export function UnitsPanel({ propertyId, archived }: { propertyId: string; archi
   )
 }
 
-const schema = z.object({
-  code: z.string().trim().min(1, 'Enter the unit code, e.g. A1.').max(30),
-  type: z.enum(UnitTypes),
-  floor: optionalText(20),
-  bedrooms: optionalWhole,
-  bathrooms: optionalWhole,
-  sizeSquareMetres: optionalAmount,
-  defaultRent: requiredAmount,
-  billingFrequency: z.enum(BillingFrequencies),
-  serviceChargeSharePercent: optionalAmount.refine((v) => v === '' || Number(v) <= 100, 'Enter a percentage up to 100.'),
-  occupancyStatus: z.enum(OccupancyStatuses),
-  notes: optionalText(2000),
-})
+const schema = z
+  .object({
+    code: z.string().trim().min(1, 'Enter the unit code, e.g. A1.').max(30),
+    type: z.enum(UnitTypes),
+    floor: optionalText(20),
+    bedrooms: optionalWhole,
+    bathrooms: optionalWhole,
+    sizeSquareMetres: optionalAmount,
+    defaultRent: requiredAmount,
+    billingFrequency: z.enum(BillingFrequencies),
+    serviceChargeSharePercent: optionalAmount.refine((v) => v === '' || Number(v) <= 100, 'Enter a percentage up to 100.'),
+    occupancyStatus: z.enum(OccupancyStatuses),
+    shared: z.boolean(),
+    sharedOccupancyLimit: z.string().trim(),
+    notes: optionalText(2000),
+  })
+  .refine(
+    (v) =>
+      !v.shared || (/^\d+$/.test(v.sharedOccupancyLimit) && Number(v.sharedOccupancyLimit) >= 2 && Number(v.sharedOccupancyLimit) <= 50),
+    {
+      path: ['sharedOccupancyLimit'],
+      message: 'Enter a number from 2 to 50.',
+    },
+  )
 type Values = z.infer<typeof schema>
 
 function UnitForm({ propertyId, unit, onDone }: { propertyId: string; unit: Unit | null; onDone: () => void }) {
@@ -161,11 +172,14 @@ function UnitForm({ propertyId, unit, onDone }: { propertyId: string; unit: Unit
       billingFrequency: unit?.billingFrequency ?? 'Annual',
       serviceChargeSharePercent: unit?.serviceChargeSharePercent?.toString() ?? '',
       occupancyStatus: unit?.occupancyStatus ?? 'Vacant',
+      shared: unit?.sharedOccupancyLimit != null,
+      sharedOccupancyLimit: unit?.sharedOccupancyLimit?.toString() ?? '2',
       notes: unit?.notes ?? '',
     },
   })
   const errors = formState.errors
   const rent = useWatch({ control, name: 'defaultRent' })
+  const shared = useWatch({ control, name: 'shared' })
 
   const save = useMutation({
     mutationFn: (v: Values) => {
@@ -183,6 +197,7 @@ function UnitForm({ propertyId, unit, onDone }: { propertyId: string; unit: Unit
         amenities: unit?.amenities ?? null,
         notes: blankToNull(v.notes),
         occupancyStatus: v.occupancyStatus,
+        sharedOccupancyLimit: v.shared ? Number(v.sharedOccupancyLimit) : null,
       }
       return unit ? put<Unit>(`/api/v1/units/${unit.id}`, body) : post<Unit>(`/api/v1/properties/${propertyId}/units`, body)
     },
@@ -193,7 +208,11 @@ function UnitForm({ propertyId, unit, onDone }: { propertyId: string; unit: Unit
   })
 
   return (
-    <form className="mb-6 space-y-4 rounded-md bg-slate-50 p-4 ring-1 ring-slate-200" onSubmit={handleSubmit((v) => save.mutate(v))} noValidate>
+    <form
+      className="mb-6 space-y-4 rounded-md bg-slate-50 p-4 ring-1 ring-slate-200"
+      onSubmit={handleSubmit((v) => save.mutate(v))}
+      noValidate
+    >
       <h3 className="text-sm font-semibold">{unit ? `Edit unit ${unit.code}` : 'New unit'}</h3>
       <ErrorBox error={save.error} />
       <div className="grid gap-4 sm:grid-cols-3">
@@ -236,6 +255,25 @@ function UnitForm({ propertyId, unit, onDone }: { propertyId: string; unit: Unit
             </option>
           ))}
         </SelectField>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <label className="flex items-start gap-2 text-sm sm:col-span-2">
+          <input type="checkbox" className="mt-0.5" {...register('shared')} />
+          <span>
+            Let room by room (shared)
+            <span className="block text-xs text-slate-500">
+              Each room or bed space gets its own lease, so the unit takes several at once.
+            </span>
+          </span>
+        </label>
+        {shared && (
+          <TextField
+            label="Leases at once"
+            inputMode="numeric"
+            {...register('sharedOccupancyLimit')}
+            error={errors.sharedOccupancyLimit?.message}
+          />
+        )}
       </div>
       <TextAreaField label="Notes" rows={2} {...register('notes')} error={errors.notes?.message} />
       <div className="flex gap-2">

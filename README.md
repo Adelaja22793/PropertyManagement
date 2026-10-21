@@ -92,6 +92,7 @@ It follows the design in *Property Management System: Requirements & Technical D
 - **Renewing** drafts the next lease for the same unit, tenants and guarantors, starting the day after the current one ends, with the new rent (rent review). Recurring charges carry over; move-in charges don't. Activating the renewal closes the current lease as renewed.
 - **Ending** records the move-out date. Before the end date it is an early termination and needs a reason. The unit is free from the move-out day. Nothing is deleted.
 - **Occupancy is driven by leases.** Activating, renewing or ending a lease updates the unit (occupied, reserved for a future start, or vacant), and an hourly job catches up date changes. Staff can't set occupancy by hand, or archive the unit, while it has an active lease.
+- **Shared units (design 6.5).** A unit can be marked as let room by room, with how many leases it takes at once (2 to 50). It then takes overlapping leases up to that limit; the property page shows how many are let, keeps Let and Advertise until it is full, and its listing closes only when the last place is taken. The limit can't drop below the leases already holding it together.
 - Leases follow property visibility, so a property manager sees only the leases on their properties.
 - **Notices.** Record a notice served on the tenants (notice to quit, 7-day notice of owner's intention to recover possession, rent review, other): date, method of service, who served it and when it expires. The expiry defaults to the lease's notice period, then the company's own notice period for the property's state and rent frequency, then the Lagos Tenancy Law 2011 period for the tenancy (6 months yearly, 3 months half-yearly or quarterly, 1 month monthly; 7 days for owner's intention). The form shows where the suggestion came from. The owner's intention notice is refused until a notice to quit has expired. Notices can be withdrawn but not deleted. A lawyer should confirm the periods for each organization.
 - **Inspections.** One move-in and one move-out condition report per lease, area by area. A move-out report starts from the move-in areas and can propose deductions from the caution deposit (a proposal only until the finance work lands).
@@ -158,8 +159,8 @@ Emails (invitations, password resets) are only logged in development. The person
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 109 unit + 117 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
-cd frontend && npm test          # 51 component and client tests
+cd backend && dotnet test        # 114 unit + 119 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd frontend && npm test          # 53 component and client tests
 cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running; the support test
                                  # marks a user as platform support with docker exec on the mssql container, or PMS_E2E_SQLCMD)
 ```
@@ -288,7 +289,6 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 - Repair costs posted as expenses against the owner or service charge, vendor invoices and payments (wait for the finance sign-off).
 - SMS alerts for emergency repairs.
 - Tenant reminders by SMS (they go by email only), and rent-due and overdue reminders (wait for invoices). The built-in notice periods are Lagos defaults; each company should enter its lawyer's periods for other states.
-- Shared occupancy of one unit by several separate leases.
 - Money in the portals (owner statements and payouts, tenant invoices, receipts and online payment), and SMS for portal users.
 - Run a ClamAV daemon in production and set `Storage:ClamAv:Host`; without it uploads are only checked for the EICAR test file.
 - Files are kept on one disk (`Storage:LocalPath`). With more than one API server, use a shared volume or move to cloud storage with short-lived signed links (design 6.13), and back the files up with the database.
