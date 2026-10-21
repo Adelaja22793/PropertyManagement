@@ -24,6 +24,8 @@ builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 builder.Services.AddScoped<IRequestInfo, HttpRequestInfo>();
 builder.Services.AddSingleton<LeaseScheduleJob>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<LeaseScheduleJob>());
+builder.Services.AddSingleton<SubscriptionJob>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<SubscriptionJob>());
 
 builder.Services
     .AddIdentity<AppUser, IdentityRole<Guid>>(o =>

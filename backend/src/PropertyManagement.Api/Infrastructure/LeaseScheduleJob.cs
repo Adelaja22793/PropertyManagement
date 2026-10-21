@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PropertyManagement.Application.Abstractions;
 using PropertyManagement.Application.Leases;
+using PropertyManagement.Domain.Organizations;
 using PropertyManagement.Infrastructure.Persistence;
 
 namespace PropertyManagement.Api.Infrastructure;
@@ -34,14 +35,15 @@ public sealed class LeaseScheduleJob(IServiceScopeFactory scopes, IConfiguration
 
     public async Task RunOnceAsync(CancellationToken ct)
     {
-        List<Guid> organizationIds;
+        List<(Guid Id, OrganizationStatus Status)> organizations;
         await using (var scope = scopes.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            organizationIds = await db.Organizations.Select(o => o.Id).ToListAsync(ct);
+            organizations = (await db.Organizations.Where(o => o.Status != OrganizationStatus.Cancelled)
+                .Select(o => new { o.Id, o.Status }).ToListAsync(ct)).Select(o => (o.Id, o.Status)).ToList();
         }
 
-        foreach (var organizationId in organizationIds)
+        foreach (var (organizationId, status) in organizations)
         {
             try
             {
@@ -49,6 +51,8 @@ public sealed class LeaseScheduleJob(IServiceScopeFactory scopes, IConfiguration
                 scope.ServiceProvider.GetRequiredService<ICurrentOrganization>().Set(organizationId, null, [], []);
                 var changed = await scope.ServiceProvider.GetRequiredService<LeaseService>().RefreshOccupancyAsync(ct);
                 if (changed > 0) logger.LogInformation("Updated occupancy of {Count} units in {OrganizationId}", changed, organizationId);
+                // A suspended company gets no new reminders (design 4.8).
+                if (status != OrganizationStatus.Active) continue;
                 var reminders = await scope.ServiceProvider.GetRequiredService<LeaseReminderService>().SendDueAsync(ct);
                 if (reminders > 0) logger.LogInformation("Sent {Count} lease reminders in {OrganizationId}", reminders, organizationId);
             }

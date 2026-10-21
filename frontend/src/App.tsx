@@ -10,6 +10,7 @@ import { DashboardPage } from './features/dashboard/DashboardPage'
 import { BranchesPage } from './features/branches/BranchesPage'
 import { TeamPage } from './features/team/TeamPage'
 import { RolesPage } from './features/roles/RolesPage'
+import { CompaniesPage } from './features/platform/CompaniesPage'
 import { AuditPage } from './features/audit/AuditPage'
 import { SettingsPage } from './features/organizations/SettingsPage'
 import { NewOrganizationPage } from './features/organizations/NewOrganizationPage'
@@ -80,6 +81,7 @@ export function App() {
         <Route path="portal" element={<PortalHome />} />
         <Route path="security" element={<AccountSecurityPage />} />
         <Route path="support-desk" element={<SupportDeskPage />} />
+        <Route path="platform/companies" element={<CompaniesPage />} />
         <Route path="branches" element={<RequirePermission permission={Permissions.branchesView}><BranchesPage /></RequirePermission>} />
         <Route path="team" element={<RequirePermission permission={Permissions.usersView}><TeamPage /></RequirePermission>} />
         <Route path="roles" element={<RequirePermission permission={Permissions.usersView}><RolesPage /></RequirePermission>} />

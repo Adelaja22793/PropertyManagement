@@ -19,7 +19,8 @@ public sealed class MembershipService(
     IAuditLogger audit,
     IClock clock,
     ICrossOrganizationAccess crossOrganization,
-    RoleCatalog catalog)
+    RoleCatalog catalog,
+    Platform.SubscriptionService subscriptions)
 {
     public static readonly TimeSpan InvitationLifetime = TimeSpan.FromDays(7);
 
@@ -46,6 +47,7 @@ public sealed class MembershipService(
         if (!emailAddress.Contains('@')) throw new DomainException("Enter a valid email address.", "invalid_email");
         await RequireAssignableAsync([request.Role], ct);
         var branchIds = await RequireBranchesAsync(request.BranchIds, ct);
+        await subscriptions.EnsureRoomForStaffAsync(ct);
 
         var existingUser = await userLookup.FindByEmailAsync(emailAddress, ct);
         if (existingUser is not null &&

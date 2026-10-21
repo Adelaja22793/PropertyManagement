@@ -59,6 +59,9 @@ public class Organization
         TimeZone = timeZone;
     }
 
+    /// <summary>Follows the subscription (design 4.8): suspended is read-only, cancelled is closed apart from the data export.</summary>
+    public void SetStatus(OrganizationStatus status) => Status = status;
+
     public static string CreateSlug(string name)
     {
         var chars = name.Trim().ToLowerInvariant()

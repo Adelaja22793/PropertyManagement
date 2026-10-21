@@ -15,7 +15,8 @@ public sealed class PropertyService(
     PropertyAccess access,
     IUserDirectory users,
     IAuditLogger audit,
-    IClock clock)
+    IClock clock,
+    Platform.SubscriptionService subscriptions)
 {
     public async Task<PagedResult<PropertySummaryDto>> SearchAsync(PropertySearch search, PageRequest page, CancellationToken ct)
     {
@@ -100,6 +101,7 @@ public sealed class PropertyService(
     {
         var property = await LoadAsync(propertyId, ct);
         property.EnsureNotArchived();
+        await subscriptions.EnsureRoomForUnitsAsync(1, ct);
         var unit = new PropertyUnit(property.OrganizationId, property.Id, request.ToDetails());
         if (request.OccupancyStatus != OccupancyStatus.Vacant) unit.Update(request.ToDetails(), request.OccupancyStatus);
         await EnsureUniqueUnitCodeAsync(property.Id, unit.Code, null, ct);

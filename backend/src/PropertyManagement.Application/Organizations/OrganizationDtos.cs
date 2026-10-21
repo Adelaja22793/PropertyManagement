@@ -7,7 +7,9 @@ public sealed record OrganizationSummaryDto(Guid Id, string Name, string Slug, O
     /// <summary>Set when the user is platform support with an approved grant here: read-only access ends at this time.</summary>
     DateTime? SupportAccessUntilUtc = null,
     /// <summary>Names of the user's custom roles here, by key. Built-in roles are named by the client.</summary>
-    IReadOnlyDictionary<string, string>? RoleNames = null);
+    IReadOnlyDictionary<string, string>? RoleNames = null,
+    /// <summary>Lifecycle dates for banners (design 4.8). Null for support access.</summary>
+    Platform.SubscriptionSummaryDto? Subscription = null);
 
 public sealed record OrganizationDetailDto(Guid Id, string Name, string Slug, OrganizationType Type,
     OrganizationStatus Status, string BaseCurrency, string TimeZone, string? ContactEmail, string? ContactPhone,

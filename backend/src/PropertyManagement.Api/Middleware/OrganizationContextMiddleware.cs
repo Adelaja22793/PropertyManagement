@@ -64,6 +64,8 @@ public sealed class OrganizationContextMiddleware(RequestDelegate next)
                 Roles = m.Roles.Select(r => r.RoleName).ToList(),
                 Branches = m.BranchScopes.Select(s => s.BranchId).ToList(),
                 m.TwoFactorRequiredSinceUtc,
+                CancelledAtUtc = db.Subscriptions.Where(s => s.OrganizationId == o.Id).OrderByDescending(s => s.StartedAtUtc)
+                    .Select(s => s.CancelledAtUtc).FirstOrDefault(),
                 TwoFactorEnabled = db.Users.Where(u => u.Id == userId).Select(u => u.TwoFactorEnabled).FirstOrDefault(),
             })
             .SingleOrDefaultAsync(context.RequestAborted);
@@ -87,8 +89,18 @@ public sealed class OrganizationContextMiddleware(RequestDelegate next)
             return;
         }
 
+        // A cancelled company is closed, except that its admins can download its data for a while (design 4.8).
+        var cancelled = access?.OrganizationStatus == OrganizationStatus.Cancelled;
+        if (cancelled && !accountPath && ExportStillOpen(context, access!.CancelledAtUtc))
+            cancelled = false;
+        else if (cancelled && !accountPath)
+        {
+            await Problem(context, 403, "This company's subscription has ended.", "organization_cancelled");
+            return;
+        }
+
         // Same answer whether the organization does not exist or the user is not a member: no probing.
-        if (access is null || access.OrganizationStatus == OrganizationStatus.Cancelled)
+        if (access is null || cancelled)
         {
             // Someone whose access just ended (removed, or a support grant ran out) can still load their account.
             if (accountPath)
@@ -104,7 +116,7 @@ public sealed class OrganizationContextMiddleware(RequestDelegate next)
             return;
         }
 
-        if (access.OrganizationStatus == OrganizationStatus.Suspended && !HttpMethods.IsGet(context.Request.Method))
+        if (access.OrganizationStatus == OrganizationStatus.Suspended && !HttpMethods.IsGet(context.Request.Method) && !accountPath)
         {
             await Problem(context, 403, "This organization's subscription is suspended, so it is read-only.", "organization_suspended");
             return;
@@ -136,6 +148,12 @@ public sealed class OrganizationContextMiddleware(RequestDelegate next)
             && db.Users.Any(u => u.Id == userId && u.IsPlatformAdmin)
             && db.Organizations.Any(o => o.Id == organizationId && o.Status != OrganizationStatus.Cancelled), ct);
     }
+
+    /// <summary>Reading the data export or the subscription, while the export window after cancelling is open.</summary>
+    private static bool ExportStillOpen(HttpContext context, DateTime? cancelledAtUtc) =>
+        cancelledAtUtc is { } at && at.AddDays(OrganizationSubscription.ExportDays) > DateTime.UtcNow
+        && HttpMethods.IsGet(context.Request.Method)
+        && (context.Request.Path.StartsWithSegments("/api/v1/exports") || context.Request.Path.StartsWithSegments("/api/v1/subscription"));
 
     private static Task Problem(HttpContext context, int status, string title, string code)
     {

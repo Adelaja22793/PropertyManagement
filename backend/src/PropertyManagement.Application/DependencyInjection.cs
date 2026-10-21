@@ -8,6 +8,7 @@ using PropertyManagement.Application.Listings;
 using PropertyManagement.Application.Maintenance;
 using PropertyManagement.Application.Organizations;
 using PropertyManagement.Application.Owners;
+using PropertyManagement.Application.Platform;
 using PropertyManagement.Application.Portal;
 using PropertyManagement.Application.Properties;
 using PropertyManagement.Application.Reports;
@@ -24,6 +25,8 @@ public static class DependencyInjection
         services.AddScoped<MembershipService>();
         services.AddScoped<RoleCatalog>();
         services.AddScoped<CustomRoleService>();
+        services.AddScoped<SubscriptionService>();
+        services.AddScoped<PlatformOrganizationService>();
         services.AddScoped<BranchService>();
         services.AddScoped<AuditQueryService>();
         services.AddScoped<PropertyAccess>();

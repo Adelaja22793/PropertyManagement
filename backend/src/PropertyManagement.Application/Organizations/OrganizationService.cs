@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PropertyManagement.Application.Abstractions;
 using PropertyManagement.Application.Authorization;
 using PropertyManagement.Application.Common;
+using PropertyManagement.Application.Platform;
 using PropertyManagement.Domain.Common;
 using PropertyManagement.Domain.Organizations;
 using PropertyManagement.Domain.Platform;
@@ -43,9 +44,12 @@ public sealed class OrganizationService(
     public async Task<IReadOnlyList<OrganizationSummaryDto>> ListForUserAsync(Guid userId, CancellationToken ct)
     {
         using var _ = crossOrganization.Allow();
+        // A cancelled company stays listed while its admins can still download its data.
+        var exportFrom = clock.UtcNow.AddDays(-OrganizationSubscription.ExportDays);
         var rows = await db.Memberships.IgnoreQueryFilters()
             .Where(m => m.UserId == userId && m.Status == MembershipStatus.Active)
-            .Join(db.Organizations.Where(o => o.Status != OrganizationStatus.Cancelled),
+            .Join(db.Organizations.Where(o => o.Status != OrganizationStatus.Cancelled
+                    || db.Subscriptions.Any(s => s.OrganizationId == o.Id && s.CancelledAtUtc > exportFrom)),
                 m => m.OrganizationId, o => o.Id, (m, o) => new { Membership = m, Organization = o })
             .Select(x => new
             {
@@ -61,11 +65,16 @@ public sealed class OrganizationService(
             .Where(r => ids.Contains(r.Id)).ToListAsync(ct);
         var granted = custom.ToDictionary(r => r.Key, r => r.GetPermissions());
         var names = custom.ToDictionary(r => r.Key, r => r.Name);
+        var orgIds = rows.Select(r => r.Id).ToList();
+        var subscriptions = (await db.Subscriptions.IgnoreQueryFilters().AsNoTracking().Where(s => orgIds.Contains(s.OrganizationId))
+                .ToListAsync(ct))
+            .GroupBy(s => s.OrganizationId).ToDictionary(g => g.Key, g => SubscriptionSummaryDto.From(g.MaxBy(s => s.StartedAtUtc)!));
 
         return rows.Select(r => new OrganizationSummaryDto(r.Id, r.Name, r.Slug, r.Type, r.Status, r.Roles,
             Roles.PermissionsFor(r.Roles, granted).Order().ToList(),
             r.TwoFactorRequiredSinceUtc is { } since ? DateTime.SpecifyKind(since, DateTimeKind.Utc) : null,
-            RoleNames: r.Roles.Where(names.ContainsKey).ToDictionary(k => k, k => names[k]))).ToList();
+            RoleNames: r.Roles.Where(names.ContainsKey).ToDictionary(k => k, k => names[k]),
+            Subscription: subscriptions.GetValueOrDefault(r.Id))).ToList();
     }
 
     public async Task<OrganizationDetailDto> GetCurrentAsync(CancellationToken ct)

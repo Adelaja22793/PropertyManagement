@@ -1790,11 +1790,21 @@ namespace PropertyManagement.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime?>("CurrentPeriodEndsAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("LastNoticeKey")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("PastDueSinceUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid>("PlanId")
                         .HasColumnType("uniqueidentifier");
@@ -1806,6 +1816,9 @@ namespace PropertyManagement.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime?>("SuspendedAtUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("TrialEndsAtUtc")
                         .HasColumnType("datetime2");
