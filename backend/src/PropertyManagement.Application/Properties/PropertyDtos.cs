@@ -28,15 +28,15 @@ public sealed record UnitDto(
     Guid Id, Guid PropertyId, string PropertyCode, string Code, UnitType Type, string? Floor, int? Bedrooms,
     int? Bathrooms, decimal? SizeSquareMetres, decimal DefaultRent, string Currency, BillingFrequency BillingFrequency,
     decimal? ServiceChargeSharePercent, OccupancyStatus OccupancyStatus, string? Amenities, string? Notes,
-    bool IsArchived);
+    bool IsArchived, int? SharedOccupancyLimit, int ActiveLeaseCount);
 
 public sealed record SaveUnitRequest(
     string Code, UnitType Type, string? Floor, int? Bedrooms, int? Bathrooms, decimal? SizeSquareMetres,
     decimal DefaultRent, string? Currency, BillingFrequency BillingFrequency, decimal? ServiceChargeSharePercent,
-    string? Amenities, string? Notes, OccupancyStatus OccupancyStatus = OccupancyStatus.Vacant)
+    string? Amenities, string? Notes, OccupancyStatus OccupancyStatus = OccupancyStatus.Vacant, int? SharedOccupancyLimit = null)
 {
     internal UnitDetails ToDetails() => new(Code, Type, Floor, Bedrooms, Bathrooms, SizeSquareMetres, DefaultRent,
-        Currency, BillingFrequency, ServiceChargeSharePercent, Amenities, Notes);
+        Currency, BillingFrequency, ServiceChargeSharePercent, Amenities, Notes, SharedOccupancyLimit);
 }
 
 public sealed record OwnershipShareDto(Guid OwnerId, string OwnerName, decimal SharePercent, DateOnly EffectiveFrom, DateOnly? EffectiveTo);

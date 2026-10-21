@@ -20,7 +20,8 @@ public sealed record UnitDetails(
     BillingFrequency BillingFrequency,
     decimal? ServiceChargeSharePercent,
     string? Amenities,
-    string? Notes);
+    string? Notes,
+    int? SharedOccupancyLimit = null);
 
 /// <summary>A rentable space inside a property (design 6.2). Its code is unique within the property.</summary>
 public class PropertyUnit : IOrganizationScoped
@@ -56,6 +57,12 @@ public class PropertyUnit : IOrganizationScoped
     public string? Amenities { get; private set; }
     public string? Notes { get; private set; }
     public bool IsArchived { get; private set; }
+    /// <summary>
+    /// How many separate leases may hold the unit at once, for a unit let room by room (design 6.5). Null means the
+    /// unit isn't shared, so it takes one lease at a time.
+    /// </summary>
+    public int? SharedOccupancyLimit { get; private set; }
+    public int MaxConcurrentLeases => SharedOccupancyLimit ?? 1;
     public DateTime CreatedAtUtc { get; private set; }
     public byte[] RowVersion { get; private set; } = [];
 
@@ -119,5 +126,11 @@ public class PropertyUnit : IOrganizationScoped
         ServiceChargeSharePercent = d.ServiceChargeSharePercent;
         Amenities = Guard.Optional(d.Amenities, "Amenities", 1000);
         Notes = Guard.Optional(d.Notes, "Notes", 2000);
+        if (d.SharedOccupancyLimit is < MinSharedLeases or > MaxSharedLeases)
+            throw new DomainException($"A shared unit takes between {MinSharedLeases} and {MaxSharedLeases} leases at once.");
+        SharedOccupancyLimit = d.SharedOccupancyLimit;
     }
+
+    public const int MinSharedLeases = 2;
+    public const int MaxSharedLeases = 50;
 }

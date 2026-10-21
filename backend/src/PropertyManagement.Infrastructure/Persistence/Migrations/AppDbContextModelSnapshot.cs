@@ -2241,6 +2241,9 @@ namespace PropertyManagement.Infrastructure.Persistence.Migrations
                         .HasPrecision(7, 4)
                         .HasColumnType("decimal(7,4)");
 
+                    b.Property<int?>("SharedOccupancyLimit")
+                        .HasColumnType("int");
+
                     b.Property<decimal?>("SizeSquareMetres")
                         .HasPrecision(10, 2)
                         .HasColumnType("decimal(10,2)");
