@@ -9,6 +9,7 @@ import { useSession } from '../../app/session'
 import { Permissions } from '../../lib/permissions'
 import { Button, Card, ErrorBox, PageHeader, TextField } from '../../components/ui'
 import { DataExportCard } from '../exports/DataExportCard'
+import { PlanCard } from '../subscription/PlanCard'
 
 const optional = (max: number) => z.string().trim().max(max)
 const schema = z.object({
@@ -94,6 +95,9 @@ export function SettingsPage() {
           </form>
         )}
       </Card>
+      <div className="mt-6">
+        <PlanCard />
+      </div>
       {can(Permissions.dataExport) && (
         <div className="mt-6">
           <DataExportCard />

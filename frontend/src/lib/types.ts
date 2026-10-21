@@ -15,6 +15,8 @@ export interface OrganizationSummary {
   supportAccessUntilUtc?: string | null
   /** Names of the member's custom roles here, by key. */
   roleNames?: Record<string, string> | null
+  /** Lifecycle dates for banners. Null for support access. */
+  subscription?: SubscriptionSummary | null
 }
 
 export type SupportGrantStatus = 'Pending' | 'Active' | 'Declined' | 'Revoked' | 'Expired'
@@ -1025,4 +1027,48 @@ export interface Role {
 export interface PermissionGroup {
   group: string
   permissions: string[]
+}
+
+export type SubscriptionStatus = 'Trial' | 'Active' | 'PastDue' | 'Suspended' | 'Cancelled'
+
+export interface SubscriptionSummary {
+  status: SubscriptionStatus
+  trialEndsAtUtc: string | null
+  currentPeriodEndsAtUtc: string | null
+  /** When the company becomes read-only; set while past due. */
+  suspendsAtUtc: string | null
+  /** Until when admins can download the data; set once cancelled. */
+  exportUntilUtc: string | null
+}
+
+export interface Subscription extends SubscriptionSummary {
+  planCode: string
+  planName: string
+  maxUnits: number
+  maxUsers: number
+  unitsUsed: number
+  staffUsed: number
+}
+
+export interface Plan {
+  code: string
+  name: string
+  maxUnits: number
+  maxUsers: number
+}
+
+export interface PlatformOrganization {
+  id: string
+  name: string
+  slug: string
+  type: OrganizationType
+  status: OrganizationStatus
+  createdAtUtc: string
+  planCode: string
+  planName: string
+  maxUnits: number
+  maxUsers: number
+  subscription: SubscriptionSummary
+  units: number
+  staff: number
 }

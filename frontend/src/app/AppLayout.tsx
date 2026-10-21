@@ -7,6 +7,8 @@ import { formatDate, formatDay } from '../lib/format'
 import { isOverdue, twoFactorDeadline } from '../features/account/twoFactor'
 import { Permissions, PortalRoles } from '../lib/permissions'
 import { PortalHome } from '../features/portal/PortalHome'
+import { SubscriptionBanner } from '../features/subscription/SubscriptionBanner'
+import { CancelledNotice } from '../features/subscription/CancelledNotice'
 
 const nav = [
   { to: '/app', label: 'Dashboard', end: true, permission: Permissions.organizationView },
@@ -19,7 +21,13 @@ const nav = [
   {
     to: '/app/reports',
     label: 'Reports',
-    permission: [Permissions.propertiesView, Permissions.leasesView, Permissions.maintenanceView, Permissions.leadsManage, Permissions.auditView],
+    permission: [
+      Permissions.propertiesView,
+      Permissions.leasesView,
+      Permissions.maintenanceView,
+      Permissions.leadsManage,
+      Permissions.auditView,
+    ],
   },
   { to: '/app/branches', label: 'Branches', permission: Permissions.branchesView },
   { to: '/app/team', label: 'Team', permission: Permissions.usersView },
@@ -83,7 +91,9 @@ export function AppLayout() {
               {item.label}
             </NavLink>
           ))}
-          {!portalOnly && <p className="px-3 pt-4 text-xs text-slate-400">Rent, payments and payouts arrive once the finance design is signed off.</p>}
+          {!portalOnly && (
+            <p className="px-3 pt-4 text-xs text-slate-400">Rent, payments and payouts arrive once the finance design is signed off.</p>
+          )}
         </nav>
       </aside>
 
@@ -116,12 +126,17 @@ export function AppLayout() {
           </div>
           <div className="flex items-center gap-3 text-sm">
             <span className="hidden text-slate-600 sm:inline">{me.fullName}</span>
-{me.isPlatformAdmin && (
-              <Link to="/app/support-desk" className="rounded-md px-2 py-1 font-medium text-slate-600 hover:bg-slate-100">
-                Support desk
-              </Link>
+            {me.isPlatformAdmin && (
+              <>
+                <Link to="/app/platform/companies" className="rounded-md px-2 py-1 font-medium text-slate-600 hover:bg-slate-100">
+                  Companies
+                </Link>
+                <Link to="/app/support-desk" className="rounded-md px-2 py-1 font-medium text-slate-600 hover:bg-slate-100">
+                  Support desk
+                </Link>
+              </>
             )}
-                        <Link to="/app/security" className="rounded-md px-2 py-1 font-medium text-slate-600 hover:bg-slate-100">
+            <Link to="/app/security" className="rounded-md px-2 py-1 font-medium text-slate-600 hover:bg-slate-100">
               Security
             </Link>
             <button
@@ -141,9 +156,11 @@ export function AppLayout() {
             in their audit log.
           </div>
         )}
+        {!portalOnly && <SubscriptionBanner organization={organization} />}
         {deadline && !shutOut && !onSecurityPage && !isOverdue(deadline) && (
           <div role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 sm:px-6">
-            Your role needs two-step sign-in. Turn it on by {formatDay(deadline.toISOString().slice(0, 10))} to keep using {organization.name}.{' '}
+            Your role needs two-step sign-in. Turn it on by {formatDay(deadline.toISOString().slice(0, 10))} to keep using{' '}
+            {organization.name}.{' '}
             <Link to="/app/security" className="font-medium underline">
               Turn it on
             </Link>
@@ -154,7 +171,8 @@ export function AppLayout() {
             <div className="mx-auto max-w-lg rounded-lg bg-white p-6 shadow-sm ring-1 ring-slate-200">
               <h1 className="text-lg font-semibold text-slate-900">Turn on two-step sign-in</h1>
               <p className="mt-2 text-sm text-slate-600">
-                Your role in {organization.name} needs a code from an authenticator app when you sign in. Turn it on to keep using this organization.
+                Your role in {organization.name} needs a code from an authenticator app when you sign in. Turn it on to keep using this
+                organization.
               </p>
               <Link
                 to="/app/security"
@@ -163,6 +181,11 @@ export function AppLayout() {
                 Set it up now
               </Link>
             </div>
+          ) : organization.status === 'Cancelled' &&
+            !onSecurityPage &&
+            !pathname.startsWith('/app/platform') &&
+            pathname !== '/app/support-desk' ? (
+            <CancelledNotice organization={organization} />
           ) : portalOnly && !onSecurityPage ? (
             <PortalHome key={organization.id} />
           ) : (

@@ -55,6 +55,14 @@ It follows the design in *Property Management System: Requirements & Technical D
 - While it lasts, support sees the company like a read-only staff member with no identity numbers (NIN, BVN). Any change is refused, and every page they open, every blocked change and each step of the grant is in the company's audit log. Support sees a banner with the end time.
 - Who counts as platform support is set in the database (`AspNetUsers.IsPlatformAdmin`); there is deliberately no screen for it. They must have two-step sign-in on to ask.
 
+### Subscriptions and plans (design 4.8, no payments)
+
+- Every company starts on a 30-day free trial of the Starter plan (50 units, 5 team members). **Settings, Plan** shows the plan, where the subscription stands and how much of the plan is used.
+- **Lifecycle.** A week before the trial or paid-up date ends, the admins get an email and staff see a banner. When it ends, the subscription is past due: everything keeps working for a 14-day grace period, with a banner and an email. After that the company is suspended, which makes it read-only for staff. Owners and tenants can still open their portals, and staff can still manage their own account. Suspended companies get no new lease reminders. `SubscriptionJob` moves subscriptions on hourly and emails each stage once.
+- **Cancelled.** The team loses access, except that admins can download all records and files for 90 days (the data export and the plan stay open). Deleting the data after that waits for the data protection adviser.
+- **Plan limits.** New units and new team members (pending invitations count) stop at the plan's limits. Owner and tenant portal users never count, and limits never block anything a tenant needs.
+- **Platform staff** (`IsPlatformAdmin`, with two-step sign-in) manage companies from **Companies**. They can extend a trial, record the date a company has paid up to (after payment was confirmed outside the app), change plan, make a company read-only, or cancel it with a reason. Reinstating a cancelled company with a paid-up date opens it again. They see each company's plan, status and counts of units and staff, never its records. Every change is in the company's audit log.
+
 ### Data export (design 4.8 and 11.4)
 
 - **Everything the company holds.** Under Settings, an Organization Admin downloads a ZIP of CSV files: the organization, its members with names and emails, one file per organization-owned table (built from the database model, so new tables are included automatically), support access grants and the full audit log. Ticking "include uploaded files" adds every stored file.
@@ -149,8 +157,8 @@ Emails (invitations, password resets) are only logged in development. The person
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 100 unit + 108 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
-cd frontend && npm test          # 47 component and client tests
+cd backend && dotnet test        # 103 unit + 111 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd frontend && npm test          # 48 component and client tests
 cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running; the support test
                                  # marks a user as platform support with docker exec on the mssql container, or PMS_E2E_SQLCMD)
 ```
@@ -167,6 +175,9 @@ Each integration test class creates its own database and drops it afterwards.
 | POST | /api/v1/auth/login/two-factor, /login/recovery-code | Second sign-in step after `login` returns `requiresTwoFactor` |
 | GET | /api/v1/auth/two-factor | Whether it is on, required, and recovery codes left |
 | POST | /api/v1/auth/two-factor/setup, /enable, /recovery-codes, /disable | Set up the app, turn on with a code, new codes, turn off with the password |
+| GET | /api/v1/platform/organizations?search= | Platform staff: companies with plan, lifecycle and counts |
+| POST | /api/v1/platform/organizations/{id}/extend-trial, /activate, /plan, /suspend, /cancel | Platform staff: `until`, `planCode`, `reason` as needed |
+| GET | /api/v1/subscription | The selected company's plan, lifecycle dates and usage |
 | GET, POST | /api/v1/platform/support-grants | Platform support: my requests; ask a company (`organization` = web address name, `reason`, `hours`) |
 | POST | /api/v1/platform/support-grants/{id}/end | Platform support: end access early or withdraw a request |
 | GET | /api/v1/exports/organization | Admin: ZIP of all the organization's data; `includeFiles=true` adds stored files |
@@ -264,7 +275,7 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 ## Known gaps before production
 
 - A real email provider (invitations and resets are only logged).
-- Platform admin area and subscription billing. Support access is read-only only; a write option needs a decision on what support may change.
+- Taking subscription payments online, SaaS invoices and plan prices (prices are 0 until decided; platform staff record paid-up dates by hand). Support access is read-only only; a write option needs a decision on what support may change.
 - Data protection (design 11.4): erasing a person's data and per-record retention periods wait for the data protection adviser, as do the privacy notice and consent wording. Guarantors are included in their tenant's export but have no export of their own yet. Large exports are built while the admin waits; a background job with an emailed link would suit very large companies.
 - The audit table is append-only in code; also deny UPDATE and DELETE to the app's database login.
 - Data Protection keys (which encrypt identity numbers and sign-in cookies) are stored in the `DataProtectionKeys` table. In production also encrypt the keys themselves, for example with `ProtectKeysWithAzureKeyVault` or a certificate, so a database copy alone can't decrypt NIN or BVN.

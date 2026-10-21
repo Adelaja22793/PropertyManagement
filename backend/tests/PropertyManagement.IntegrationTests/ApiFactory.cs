@@ -45,6 +45,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["RateLimiting:EnquiryPermitPerMinute"] = "10000",
             // Tests run the lease schedule themselves, so it never races a test's own changes.
             ["Jobs:Leases:Enabled"] = "false",
+            ["Jobs:Subscriptions:Enabled"] = "false",
             ["Storage:LocalPath"] = _files,
         }));
         builder.ConfigureTestServices(services =>

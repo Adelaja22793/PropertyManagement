@@ -33,6 +33,10 @@ internal sealed class OrganizationSubscriptionConfiguration : IEntityTypeConfigu
         b.HasOne<SubscriptionPlan>().WithMany().HasForeignKey(x => x.PlanId).OnDelete(DeleteBehavior.Restrict);
         b.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
         b.HasIndex(x => x.OrganizationId);
+        b.Property(x => x.LastNoticeKey).HasMaxLength(60);
+        b.Ignore(x => x.SuspendsAtUtc);
+        b.Ignore(x => x.ExportUntilUtc);
+        b.Ignore(x => x.OrganizationStatus);
     }
 }
 
