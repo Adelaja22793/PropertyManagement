@@ -66,7 +66,7 @@ It follows the design in *Property Management System: Requirements & Technical D
 ### Data export (design 4.8 and 11.4)
 
 - **Everything the company holds.** Under Settings, an Organization Admin downloads a ZIP of CSV files: the organization, its members with names and emails, one file per organization-owned table (built from the database model, so new tables are included automatically), support access grants and the full audit log. Ticking "include uploaded files" adds every stored file.
-- **One person's data**, for when a tenant or owner asks what is held about them. "Download their data" on a tenant gives their record, identity summary, guarantors, screening checks, portal access, leases with charges, notices and inspections, the repairs they reported, and their documents with the files. An owner's gives their record, bank accounts, management agreements, properties owned, portal access and documents.
+- **One person's data**, for when a tenant or owner asks what is held about them. "Download their data" on a tenant gives their record, identity summary, guarantors, screening checks, portal access, leases with charges, notices and inspections, the repairs they reported, and their documents with the files. An owner's gives their record, bank accounts, management agreements, properties owned, portal access and documents. Each guarantor on a tenant's page has its own "Download data": their record and the leases they guarantee (reference, dates and rent only, not the rest of the tenant's file).
 - Identity numbers (NIN, BVN) stay encrypted and are left out; only their last four digits are included. Internal columns (row versions, storage keys, token hashes) are left out too. Exports need `Data.Export` (admins only) and each one is recorded in the audit log.
 
 ### Reports (no money yet)
@@ -159,7 +159,7 @@ Emails (invitations, password resets) are only logged in development. The person
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 114 unit + 119 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd backend && dotnet test        # 114 unit + 120 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
 cd frontend && npm test          # 53 component and client tests
 cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running; the support test
                                  # marks a user as platform support with docker exec on the mssql container, or PMS_E2E_SQLCMD)
@@ -183,7 +183,7 @@ Each integration test class creates its own database and drops it afterwards.
 | GET, POST | /api/v1/platform/support-grants | Platform support: my requests; ask a company (`organization` = web address name, `reason`, `hours`) |
 | POST | /api/v1/platform/support-grants/{id}/end | Platform support: end access early or withdraw a request |
 | GET | /api/v1/exports/organization | Admin: ZIP of all the organization's data; `includeFiles=true` adds stored files |
-| GET | /api/v1/exports/tenants/{id}, /exports/owners/{id} | Admin: ZIP of everything held about one tenant or owner |
+| GET | /api/v1/exports/tenants/{id}, /exports/owners/{id}, /exports/guarantors/{id} | Admin: ZIP of everything held about one tenant, owner or guarantor |
 | GET | /api/v1/support-grants | Admin: requests for this organization |
 | POST | /api/v1/support-grants/{id}/approve, /decline, /revoke | Admin: answer a request or end access |
 | POST | /api/v1/auth/forgot-password, /reset-password | |
@@ -281,7 +281,7 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 
 - A real email provider (invitations and resets are only logged).
 - Taking subscription payments online, SaaS invoices and plan prices (prices are 0 until decided; platform staff record paid-up dates by hand). Support access is read-only only; a write option needs a decision on what support may change.
-- Data protection (design 11.4): erasing a person's data and per-record retention periods wait for the data protection adviser, as do the privacy notice and consent wording. Guarantors are included in their tenant's export but have no export of their own yet. Large exports are built while the admin waits; a background job with an emailed link would suit very large companies.
+- Data protection (design 11.4): erasing a person's data and per-record retention periods wait for the data protection adviser, as do the privacy notice and consent wording. Large exports are built while the admin waits; a background job with an emailed link would suit very large companies.
 - The audit table is append-only in code and by a database trigger. A database owner can still drop the trigger, so in production run the app under a login without ALTER rights on the schema.
 - Data Protection keys (which encrypt identity numbers and sign-in cookies) are stored in the `DataProtectionKeys` table. In production also encrypt the keys themselves, for example with `ProtectKeysWithAzureKeyVault` or a certificate, so a database copy alone can't decrypt NIN or BVN.
 - Invoices, payments, receipts, deposits held and owner payouts (rest of Phase 4) wait for the finance design sign-off.

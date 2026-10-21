@@ -33,6 +33,11 @@ public sealed partial class ExportsController(IDataExporter exporter) : Controll
     public Task<FileStreamResult> Owner(Guid id, CancellationToken ct) =>
         ZipAsync(async stream => $"owner-{Slug(await exporter.WriteOwnerAsync(stream, id, ct))}");
 
+    [HttpGet("guarantors/{id:guid}")]
+    [RequirePermission(Permissions.Tenants.View)]
+    public Task<FileStreamResult> Guarantor(Guid id, CancellationToken ct) =>
+        ZipAsync(async stream => $"guarantor-{Slug(await exporter.WriteGuarantorAsync(stream, id, ct))}");
+
     /// <summary>Builds the ZIP in a temporary file that is deleted once the download ends, so large exports don't sit in memory.</summary>
     private async Task<FileStreamResult> ZipAsync(Func<Stream, Task<string>> write)
     {

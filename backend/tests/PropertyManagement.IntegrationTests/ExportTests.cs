@@ -121,4 +121,42 @@ public sealed class ExportTests(ApiFactory factory) : IClassFixture<ApiFactory>
         (await outsider.Http.GetAsync($"/api/v1/exports/tenants/{tenant}")).ShouldBe(HttpStatusCode.NotFound);
         (await outsider.Http.GetAsync($"/api/v1/exports/owners/{owner}")).ShouldBe(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task A_guarantor_export_holds_their_record_and_only_the_terms_they_guarantee()
+    {
+        var admin = await TestClient.RegisterWithOrganizationAsync(factory, "Surety Homes");
+        var property = await admin.CreatePropertyAsync($"SU-{Guid.NewGuid().ToString()[..4]}");
+        var unit = await admin.CreateUnitAsync(property, "B2");
+        var tenant = await admin.CreateTenantAsync("Ngozi Obi", $"{Guid.NewGuid():N}@example.com");
+        var guarantor = (await admin.PostAsync($"/api/v1/tenants/{tenant}/guarantors",
+            new { fullName = "Chidi Obi", phone = "08030000003", relationship = "Father", employer = "Lagos State Govt" })).GetProperty("id").GetGuid();
+        var other = (await admin.PostAsync($"/api/v1/tenants/{tenant}/guarantors",
+            new { fullName = "Ada Obi", phone = "08030000004", relationship = "Aunt" })).GetProperty("id").GetGuid();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(1));
+        var lease = await admin.PostAsync("/api/v1/leases",
+            TestClient.LeaseBody(unit, [tenant], today.AddDays(-10), today.AddDays(355), guarantorIds: [guarantor]));
+
+        var zip = await DownloadZipAsync(admin, $"/api/v1/exports/guarantors/{guarantor}");
+        Assert.Contains("Chidi Obi", Text(zip, "guarantor.csv"));
+        Assert.Contains("Lagos State Govt", Text(zip, "guarantor.csv"));
+        Assert.DoesNotContain("Ada Obi", Text(zip, "guarantor.csv"));
+        var leases = Text(zip, "guaranteed-leases.csv");
+        Assert.Contains(lease.GetProperty("reference").GetString()!, leases);
+        Assert.Contains("Ngozi Obi", leases);
+        Assert.Contains("guarantor form", Text(zip, "README.txt"));
+        Assert.DoesNotContain(zip.Keys, k => k is "tenant.csv" or "identity.csv" or "documents.csv");
+
+        var otherZip = await DownloadZipAsync(admin, $"/api/v1/exports/guarantors/{other}");
+        Assert.Single(Text(otherZip, "guaranteed-leases.csv").Split("\r\n", StringSplitOptions.RemoveEmptyEntries));
+
+        var audit = await admin.GetAsync("/api/v1/audit-logs?pageSize=100");
+        Assert.Contains(audit.GetProperty("items").EnumerateArray(),
+            a => a.GetProperty("action").GetString() == "person.exported" && a.GetProperty("resourceId").GetString() == guarantor.ToString());
+
+        var manager = await admin.AddMemberAsync(factory, "BranchManager");
+        (await manager.Http.GetAsync($"/api/v1/exports/guarantors/{guarantor}")).ShouldBe(HttpStatusCode.Forbidden);
+        var outsider = await TestClient.RegisterWithOrganizationAsync(factory, "Elsewhere Homes");
+        (await outsider.Http.GetAsync($"/api/v1/exports/guarantors/{guarantor}")).ShouldBe(HttpStatusCode.NotFound);
+    }
 }
