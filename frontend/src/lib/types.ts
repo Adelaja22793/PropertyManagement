@@ -489,6 +489,23 @@ export interface NoticeDefault {
   basis: string
 }
 
+export interface NoticePeriodRule {
+  id: string
+  state: string | null
+  type: NoticeType
+  frequency: BillingFrequency | null
+  days: number
+  basis: string | null
+}
+
+export interface LeaseSettings {
+  staffReminderDays: number[]
+  tenantRemindersEnabled: boolean
+  tenantReminderDays: number[]
+  noticePeriods: NoticePeriodRule[]
+  builtInNoticePeriods: { type: NoticeType; frequency: BillingFrequency | null; days: number }[]
+}
+
 export const ItemConditions = ['Good', 'Fair', 'Poor', 'Damaged', 'Missing'] as const
 export type ItemCondition = (typeof ItemConditions)[number]
 export type InspectionType = 'MoveIn' | 'MoveOut'

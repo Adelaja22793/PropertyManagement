@@ -695,6 +695,44 @@ namespace PropertyManagement.Infrastructure.Persistence.Migrations
                     b.ToTable("LeaseReminders", (string)null);
                 });
 
+            modelBuilder.Entity("PropertyManagement.Domain.Leases.LeaseSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("StaffReminderDays")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("TenantReminderDays")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("TenantRemindersEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId")
+                        .IsUnique();
+
+                    b.ToTable("LeaseSettings", (string)null);
+                });
+
             modelBuilder.Entity("PropertyManagement.Domain.Leases.LeaseTenant", b =>
                 {
                     b.Property<Guid>("LeaseId")
@@ -716,6 +754,54 @@ namespace PropertyManagement.Infrastructure.Persistence.Migrations
                     b.HasIndex("OrganizationId", "TenantId");
 
                     b.ToTable("LeaseTenants", (string)null);
+                });
+
+            modelBuilder.Entity("PropertyManagement.Domain.Leases.NoticePeriodRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Basis")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Days")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Frequency")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("State")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId", "Type", "State", "Frequency")
+                        .IsUnique();
+
+                    b.ToTable("NoticePeriodRules", (string)null);
                 });
 
             modelBuilder.Entity("PropertyManagement.Domain.Listings.Lead", b =>
@@ -2697,6 +2783,15 @@ namespace PropertyManagement.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("PropertyManagement.Domain.Leases.LeaseSettings", b =>
+                {
+                    b.HasOne("PropertyManagement.Domain.Organizations.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("PropertyManagement.Domain.Leases.LeaseTenant", b =>
                 {
                     b.HasOne("PropertyManagement.Domain.Leases.Lease", null)
@@ -2710,6 +2805,15 @@ namespace PropertyManagement.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("OrganizationId", "TenantId")
                         .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PropertyManagement.Domain.Leases.NoticePeriodRule", b =>
+                {
+                    b.HasOne("PropertyManagement.Domain.Organizations.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

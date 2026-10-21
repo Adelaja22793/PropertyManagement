@@ -10,6 +10,7 @@ import { Permissions } from '../../lib/permissions'
 import { Button, Card, ErrorBox, PageHeader, TextField } from '../../components/ui'
 import { DataExportCard } from '../exports/DataExportCard'
 import { PlanCard } from '../subscription/PlanCard'
+import { LeaseSettingsCard } from '../leaseSettings/LeaseSettingsCard'
 
 const optional = (max: number) => z.string().trim().max(max)
 const schema = z.object({
@@ -95,6 +96,11 @@ export function SettingsPage() {
           </form>
         )}
       </Card>
+      {can(Permissions.leasesView) && (
+        <div className="mt-6">
+          <LeaseSettingsCard canEdit={canEdit} />
+        </div>
+      )}
       <div className="mt-6">
         <PlanCard />
       </div>

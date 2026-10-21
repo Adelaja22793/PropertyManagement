@@ -42,6 +42,8 @@ public interface IAppDbContext
     DbSet<LeaseNotice> LeaseNotices { get; }
     DbSet<LeaseInspection> LeaseInspections { get; }
     DbSet<LeaseReminder> LeaseReminders { get; }
+    DbSet<LeaseSettings> LeaseSettings { get; }
+    DbSet<NoticePeriodRule> NoticePeriodRules { get; }
     DbSet<Vendor> Vendors { get; }
     DbSet<MaintenanceRequest> MaintenanceRequests { get; }
     DbSet<MaintenanceUpdate> MaintenanceUpdates { get; }

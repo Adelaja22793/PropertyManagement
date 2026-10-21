@@ -93,9 +93,10 @@ It follows the design in *Property Management System: Requirements & Technical D
 - **Ending** records the move-out date. Before the end date it is an early termination and needs a reason. The unit is free from the move-out day. Nothing is deleted.
 - **Occupancy is driven by leases.** Activating, renewing or ending a lease updates the unit (occupied, reserved for a future start, or vacant), and an hourly job catches up date changes. Staff can't set occupancy by hand, or archive the unit, while it has an active lease.
 - Leases follow property visibility, so a property manager sees only the leases on their properties.
-- **Notices.** Record a notice served on the tenants (notice to quit, 7-day notice of owner's intention to recover possession, rent review, other): date, method of service, who served it and when it expires. The expiry defaults to the lease's notice period, or the Lagos Tenancy Law 2011 period for the tenancy (6 months yearly, 3 months half-yearly or quarterly, 1 month monthly; 7 days for owner's intention). The owner's intention notice is refused until a notice to quit has expired. Notices can be withdrawn but not deleted. A lawyer should confirm the periods for each organization.
+- **Notices.** Record a notice served on the tenants (notice to quit, 7-day notice of owner's intention to recover possession, rent review, other): date, method of service, who served it and when it expires. The expiry defaults to the lease's notice period, then the company's own notice period for the property's state and rent frequency, then the Lagos Tenancy Law 2011 period for the tenancy (6 months yearly, 3 months half-yearly or quarterly, 1 month monthly; 7 days for owner's intention). The form shows where the suggestion came from. The owner's intention notice is refused until a notice to quit has expired. Notices can be withdrawn but not deleted. A lawyer should confirm the periods for each organization.
 - **Inspections.** One move-in and one move-out condition report per lease, area by area. A move-out report starts from the move-in areas and can propose deductions from the caution deposit (a proposal only until the finance work lands).
-- **Reminders.** An hourly job emails the property's manager (or the organization admins when there is none) 90, 60 and 30 days before a lease ends, when a lease starts holding over, and when a served notice expires. Leases with a renewal drafted are skipped. Each reminder is sent once.
+- **Reminders.** An hourly job emails the property's manager (or the organization admins when there is none) on the company's chosen days before a lease ends (90, 60 and 30 by default), when a lease starts holding over, and when a served notice expires. Companies can also turn on reminders to tenants, sent to the email on each tenant's record on their own chosen days (60 and 30 by default), asking whether they will renew or move out. Leases with a renewal drafted are skipped. Each reminder is sent once.
+- **Lease settings (design 8.9).** **Settings** has lease reminder days and the company's own notice periods: per notice type, optionally for one state and one rent frequency, with a note of the legal basis. The most specific match wins (state before frequency). Only people who can change company settings can edit them; anyone who can see leases can read them.
 
 ### Maintenance and vendors (Phase 5, no money yet)
 
@@ -157,8 +158,8 @@ Emails (invitations, password resets) are only logged in development. The person
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 103 unit + 111 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
-cd frontend && npm test          # 48 component and client tests
+cd backend && dotnet test        # 109 unit + 115 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd frontend && npm test          # 51 component and client tests
 cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running; the support test
                                  # marks a user as platform support with docker exec on the mssql container, or PMS_E2E_SQLCMD)
 ```
@@ -229,6 +230,9 @@ Each integration test class creates its own database and drops it afterwards.
 | POST | /api/v1/leases/{id}/end | Record the move-out (`Leases.Terminate`); before the end date needs a reason |
 | GET, POST | /api/v1/leases/{id}/notices | List; record a served notice (`Leases.IssueNotice`) |
 | GET | /api/v1/leases/{id}/notices/default | Suggested expiry for `type` and `servedOn` |
+| GET, PUT | /api/v1/lease-settings | Reminder days and notice periods (`Leases.View` to read, `Settings.Manage` to change) |
+| POST | /api/v1/lease-settings/notice-periods | Add a notice period (`Settings.Manage`) |
+| PUT, DELETE | /api/v1/lease-settings/notice-periods/{id} | Change or remove a notice period (`Settings.Manage`) |
 | POST | /api/v1/leases/{id}/notices/{noticeId}/withdraw | |
 | GET | /api/v1/leases/{id}/inspections | Move-in and move-out reports, with the deposit on the lease |
 | PUT | /api/v1/leases/{id}/inspections/{MoveIn\|MoveOut} | Record or replace a report |
@@ -283,7 +287,7 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 - Generating notice and tenancy agreement documents from lawyer-approved templates (file storage is now in place; the templates need a lawyer).
 - Repair costs posted as expenses against the owner or service charge, vendor invoices and payments (wait for the finance sign-off).
 - SMS alerts for emergency repairs.
-- Reminders to tenants themselves (by SMS or the tenant portal), and notice periods set per organization or state rather than the Lagos defaults.
+- Tenant reminders by SMS (they go by email only), and rent-due and overdue reminders (wait for invoices). The built-in notice periods are Lagos defaults; each company should enter its lawyer's periods for other states.
 - Shared occupancy of one unit by several separate leases.
 - Two people activating overlapping leases at the very same moment could both succeed; add a database lock or check if that becomes a real risk.
 - Money in the portals (owner statements and payouts, tenant invoices, receipts and online payment), and SMS for portal users.

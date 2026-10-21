@@ -63,3 +63,69 @@ public sealed class LeaseRecordsDomainTests
             new InspectionDetails(InspectionType.MoveIn, Today, true, false, null, []), Guid.NewGuid(), DateTime.UtcNow));
     }
 }
+
+public sealed class NoticePeriodRuleTests
+{
+    private static readonly Guid Org = Guid.NewGuid();
+    private static readonly DateTime Now = new(2026, 10, 21, 8, 0, 0, DateTimeKind.Utc);
+
+    private static NoticePeriodRule Rule(string? state, BillingFrequency? frequency, int days, NoticeType type = NoticeType.NoticeToQuit) =>
+        new(Org, new NoticePeriodRuleDetails(state, type, frequency, days, null), Now);
+
+    [Fact]
+    public void Without_rules_the_Lagos_defaults_apply()
+    {
+        var period = NoticePeriods.Resolve(NoticeType.NoticeToQuit, BillingFrequency.Monthly, null, "Lagos", []);
+        Assert.Equal(30, period.Days);
+        Assert.Contains("Lagos Tenancy Law", period.Basis);
+        Assert.Equal(7, NoticePeriods.Resolve(NoticeType.OwnersIntentionToRecoverPossession, BillingFrequency.Annual, 90, "Lagos", []).Days);
+    }
+
+    [Fact]
+    public void The_most_specific_matching_rule_wins()
+    {
+        NoticePeriodRule[] rules =
+        [
+            Rule(null, null, 100), Rule(null, BillingFrequency.Annual, 110), Rule("Ogun", null, 120), Rule("Ogun", BillingFrequency.Annual, 130),
+            Rule("Ogun", null, 5, NoticeType.RentReview),
+        ];
+        Assert.Equal(130, NoticePeriods.Resolve(NoticeType.NoticeToQuit, BillingFrequency.Annual, null, " ogun ", rules).Days);
+        Assert.Equal(120, NoticePeriods.Resolve(NoticeType.NoticeToQuit, BillingFrequency.Monthly, null, "Ogun", rules).Days);
+        Assert.Equal(110, NoticePeriods.Resolve(NoticeType.NoticeToQuit, BillingFrequency.Annual, null, "Oyo", rules).Days);
+        Assert.Equal(100, NoticePeriods.Resolve(NoticeType.NoticeToQuit, BillingFrequency.Monthly, null, "Oyo", rules).Days);
+        Assert.Equal(30, NoticePeriods.Resolve(NoticeType.RentReview, BillingFrequency.Monthly, null, "Oyo", rules).Days);
+    }
+
+    [Fact]
+    public void A_lease_period_wins_except_for_the_owners_intention_notice()
+    {
+        NoticePeriodRule[] rules = [Rule(null, null, 100), Rule(null, null, 14, NoticeType.OwnersIntentionToRecoverPossession)];
+        var lease = NoticePeriods.Resolve(NoticeType.NoticeToQuit, BillingFrequency.Annual, 45, "Lagos", rules);
+        Assert.Equal(45, lease.Days);
+        Assert.Contains("agreed in this lease", lease.Basis);
+        Assert.Equal(14, NoticePeriods.Resolve(NoticeType.OwnersIntentionToRecoverPossession, BillingFrequency.Annual, 45, "Lagos", rules).Days);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(731)]
+    public void Days_must_be_sensible(int days) =>
+        Assert.Throws<DomainException>(() => Rule(null, null, days));
+
+    [Fact]
+    public void Reminder_days_are_sorted_deduplicated_and_checked()
+    {
+        var settings = new LeaseSettings(Org);
+        Assert.Equal([90, 60, 30], settings.GetStaffDays());
+        Assert.Equal([60, 30], settings.GetTenantDays());
+
+        settings.Update([7, 45, 7], tenantRemindersEnabled: false, [], Now);
+        Assert.Equal([45, 7], settings.GetStaffDays());
+        Assert.Equal([60, 30], settings.GetTenantDays());
+
+        Assert.Throws<DomainException>(() => settings.Update([], false, [], Now));
+        Assert.Throws<DomainException>(() => settings.Update([1, 2, 3, 4, 5, 6], false, [], Now));
+        Assert.Throws<DomainException>(() => settings.Update([30], true, [], Now));
+        Assert.Throws<DomainException>(() => settings.Update([366], false, [], Now));
+    }
+}
