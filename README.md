@@ -16,7 +16,7 @@ It follows the design in *Property Management System: Requirements & Technical D
 - Changing roles and removing members. Removal takes effect on the member's next request. An organization always keeps at least one admin.
 - **Custom roles (design 5).** Admins make their own roles from the permission list on the Roles page, and invite or move members into them. Changes apply on each member's next request. Nobody can give a role, or a member, permissions they don't have themselves. A role with any admin or finance power (managing the team, settings, branches, exports, identity numbers, the audit log, bank account approval or money) needs two-step sign-in, like the built-in admin and finance roles. A role in use, or offered by a pending invitation, can't be deleted. Custom roles follow each member's branch limits and never see the whole company the way admins do.
 - Organization settings (contact details, TIN, VAT number, time zone). Currency is NGN.
-- An append-only audit log of sign-ins, access denials and every sensitive change.
+- An append-only audit log of sign-ins, access denials and every sensitive change. A database trigger refuses any UPDATE or DELETE on it.
 
 ### Properties, owners and tenants (Phase 3)
 
@@ -87,7 +87,7 @@ It follows the design in *Property Management System: Requirements & Technical D
 ### Leases (Phase 4, no money yet)
 
 - **Drafts.** A lease names a unit, one or more tenants (the first is the primary tenant), guarantors who belong to those tenants, the term, rent per period, billing frequency, when rent falls due, grace and notice periods, holdover rent, renewal terms and other charges (caution deposit, agency and legal fees, stamp duty, service charge, others). Drafts can be changed freely and don't affect the unit.
-- **Activating** fixes the terms and takes the unit. A unit can't have two leases on the same day. A lease past its end date with the tenant still in (holding over) keeps the unit until the move-out is recorded.
+- **Activating** fixes the terms and takes the unit. A unit can't have two leases on the same day, even when two people activate leases on it at the same moment (the second gets "changed by someone else"). A lease past its end date with the tenant still in (holding over) keeps the unit until the move-out is recorded.
 - **Stages** come from the dates: upcoming, active, expiring (within 90 days), holding over, then renewed, ended, terminated or cancelled.
 - **Renewing** drafts the next lease for the same unit, tenants and guarantors, starting the day after the current one ends, with the new rent (rent review). Recurring charges carry over; move-in charges don't. Activating the renewal closes the current lease as renewed.
 - **Ending** records the move-out date. Before the end date it is an early termination and needs a reason. The unit is free from the move-out day. Nothing is deleted.
@@ -158,7 +158,7 @@ Emails (invitations, password resets) are only logged in development. The person
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 109 unit + 115 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd backend && dotnet test        # 109 unit + 117 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
 cd frontend && npm test          # 51 component and client tests
 cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running; the support test
                                  # marks a user as platform support with docker exec on the mssql container, or PMS_E2E_SQLCMD)
@@ -281,7 +281,7 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 - A real email provider (invitations and resets are only logged).
 - Taking subscription payments online, SaaS invoices and plan prices (prices are 0 until decided; platform staff record paid-up dates by hand). Support access is read-only only; a write option needs a decision on what support may change.
 - Data protection (design 11.4): erasing a person's data and per-record retention periods wait for the data protection adviser, as do the privacy notice and consent wording. Guarantors are included in their tenant's export but have no export of their own yet. Large exports are built while the admin waits; a background job with an emailed link would suit very large companies.
-- The audit table is append-only in code; also deny UPDATE and DELETE to the app's database login.
+- The audit table is append-only in code and by a database trigger. A database owner can still drop the trigger, so in production run the app under a login without ALTER rights on the schema.
 - Data Protection keys (which encrypt identity numbers and sign-in cookies) are stored in the `DataProtectionKeys` table. In production also encrypt the keys themselves, for example with `ProtectKeysWithAzureKeyVault` or a certificate, so a database copy alone can't decrypt NIN or BVN.
 - Invoices, payments, receipts, deposits held and owner payouts (rest of Phase 4) wait for the finance design sign-off.
 - Generating notice and tenancy agreement documents from lawyer-approved templates (file storage is now in place; the templates need a lawyer).
@@ -289,7 +289,6 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 - SMS alerts for emergency repairs.
 - Tenant reminders by SMS (they go by email only), and rent-due and overdue reminders (wait for invoices). The built-in notice periods are Lagos defaults; each company should enter its lawyer's periods for other states.
 - Shared occupancy of one unit by several separate leases.
-- Two people activating overlapping leases at the very same moment could both succeed; add a database lock or check if that becomes a real risk.
 - Money in the portals (owner statements and payouts, tenant invoices, receipts and online payment), and SMS for portal users.
 - Run a ClamAV daemon in production and set `Storage:ClamAv:Host`; without it uploads are only checked for the EICAR test file.
 - Files are kept on one disk (`Storage:LocalPath`). With more than one API server, use a shared volume or move to cloud storage with short-lived signed links (design 6.13), and back the files up with the database.

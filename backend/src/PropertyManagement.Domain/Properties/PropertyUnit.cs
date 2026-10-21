@@ -59,6 +59,15 @@ public class PropertyUnit : IOrganizationScoped
     public DateTime CreatedAtUtc { get; private set; }
     public byte[] RowVersion { get; private set; } = [];
 
+    /// <summary>
+    /// How many leases have been activated on this unit. Bumped by <see cref="RecordLeaseActivation"/> so every
+    /// activation writes the unit row: of two activations racing on the same unit, the second fails its row-version
+    /// check instead of both passing the overlap check.
+    /// </summary>
+    public int LeaseActivationCount { get; private set; }
+
+    public void RecordLeaseActivation() => LeaseActivationCount++;
+
     public void Update(UnitDetails details, OccupancyStatus occupancy)
     {
         if (IsArchived) throw new DomainException("This unit is archived and can't be changed.", "archived");
