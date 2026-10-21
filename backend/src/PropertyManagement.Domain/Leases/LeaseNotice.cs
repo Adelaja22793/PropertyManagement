@@ -77,6 +77,8 @@ public class LeaseNotice : IOrganizationScoped
 /// Law 2011 and are a starting point only: other states differ, and a lawyer must confirm them for each organization.
 /// Staff can always change the expiry date, and a lease's own notice period wins for a notice to quit.
 /// </summary>
+public sealed record NoticePeriod(int Days, string Basis);
+
 public static class NoticePeriods
 {
     public static int DefaultDays(NoticeType type, BillingFrequency frequency, int? leaseNoticeDays) => type switch
@@ -91,6 +93,35 @@ public static class NoticePeriods
         },
         _ => leaseNoticeDays ?? 30,
     };
+
+    /// <summary>
+    /// The notice period to suggest for a lease, and why. A lease's own notice period wins, except for the statutory
+    /// 7-day notice of owner's intention; then the organization's most specific matching rule (state before rent
+    /// frequency); then the built-in Lagos default.
+    /// </summary>
+    public static NoticePeriod Resolve(NoticeType type, BillingFrequency frequency, int? leaseNoticeDays, string? state,
+        IEnumerable<NoticePeriodRule> rules)
+    {
+        if (type != NoticeType.OwnersIntentionToRecoverPossession && leaseNoticeDays is { } agreed)
+            return new NoticePeriod(agreed, "The notice period agreed in this lease.");
+
+        var rule = rules.Where(r => r.Matches(type, state, frequency)).OrderByDescending(r => r.Specificity).FirstOrDefault();
+        if (rule is not null)
+        {
+            var scope = (rule.State ?? "all states") + (rule.Frequency is { } f ? $", {f.ToString().ToLowerInvariant()} rent" : "");
+            return new NoticePeriod(rule.Days, rule.Basis is null
+                ? $"Your company's notice period for {scope}."
+                : $"{rule.Basis} (your company's notice period for {scope}).");
+        }
+
+        var days = DefaultDays(type, frequency, null);
+        return new NoticePeriod(days, type switch
+        {
+            NoticeType.OwnersIntentionToRecoverPossession => "7 days, after the notice to quit has expired (Lagos Tenancy Law 2011).",
+            NoticeType.NoticeToQuit => "The Lagos Tenancy Law 2011 period for this kind of tenancy. Other states differ.",
+            _ => "A 30-day default.",
+        });
+    }
 
     /// <summary>The last day of a notice served on <paramref name="servedOn"/> that gives <paramref name="days"/> days.</summary>
     public static DateOnly ExpiryFor(DateOnly servedOn, int days) => servedOn.AddDays(days);

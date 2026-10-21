@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<LeaseService>();
         services.AddScoped<LeaseRecordsService>();
         services.AddScoped<LeaseReminderService>();
+        services.AddScoped<LeaseSettingsService>();
         services.AddScoped<VendorService>();
         services.AddScoped<MaintenanceService>();
         services.AddScoped<PortalScope>();

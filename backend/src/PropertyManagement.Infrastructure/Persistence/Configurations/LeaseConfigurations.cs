@@ -179,3 +179,33 @@ internal sealed class LeaseReminderConfiguration : IEntityTypeConfiguration<Leas
         b.HasIndex(x => new { x.LeaseId, x.Key }).IsUnique();
     }
 }
+
+internal sealed class LeaseSettingsConfiguration : IEntityTypeConfiguration<LeaseSettings>
+{
+    public void Configure(EntityTypeBuilder<LeaseSettings> b)
+    {
+        b.ToTable("LeaseSettings");
+        b.HasOne<Domain.Organizations.Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(x => x.OrganizationId).IsUnique();
+        b.Property(x => x.StaffReminderDays).HasMaxLength(50).IsRequired();
+        b.Property(x => x.TenantReminderDays).HasMaxLength(50).IsRequired();
+        b.Property(x => x.RowVersion).IsRowVersion();
+    }
+}
+
+internal sealed class NoticePeriodRuleConfiguration : IEntityTypeConfiguration<NoticePeriodRule>
+{
+    public void Configure(EntityTypeBuilder<NoticePeriodRule> b)
+    {
+        b.ToTable("NoticePeriodRules");
+        b.HasOne<Domain.Organizations.Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        b.Property(x => x.State).HasMaxLength(50);
+        b.Property(x => x.Type).HasConversion<string>().HasMaxLength(50);
+        b.Property(x => x.Frequency).HasConversion<string>().HasMaxLength(20);
+        b.Property(x => x.Basis).HasMaxLength(300);
+        b.Ignore(x => x.Specificity);
+        b.Property(x => x.RowVersion).IsRowVersion();
+        // No filter: SQL Server then treats empty state or frequency as one value, so "all states" can't be set twice.
+        b.HasIndex(x => new { x.OrganizationId, x.Type, x.State, x.Frequency }).IsUnique().HasFilter(null);
+    }
+}

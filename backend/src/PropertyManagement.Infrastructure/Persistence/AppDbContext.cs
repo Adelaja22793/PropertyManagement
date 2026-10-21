@@ -51,6 +51,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentOrgani
     public DbSet<LeaseNotice> LeaseNotices => Set<LeaseNotice>();
     public DbSet<LeaseInspection> LeaseInspections => Set<LeaseInspection>();
     public DbSet<LeaseReminder> LeaseReminders => Set<LeaseReminder>();
+    public DbSet<LeaseSettings> LeaseSettings => Set<LeaseSettings>();
+    public DbSet<NoticePeriodRule> NoticePeriodRules => Set<NoticePeriodRule>();
     public DbSet<Vendor> Vendors => Set<Vendor>();
     public DbSet<MaintenanceRequest> MaintenanceRequests => Set<MaintenanceRequest>();
     public DbSet<Document> Documents => Set<Document>();

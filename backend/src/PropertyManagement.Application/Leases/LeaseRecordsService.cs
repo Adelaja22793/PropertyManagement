@@ -32,15 +32,8 @@ public sealed class LeaseRecordsService(
         var lease = await LoadLeaseAsync(leaseId, ct);
         Guard.Defined(type, "Notice type");
         var served = servedOn ?? clock.TodayInNigeria();
-        var days = NoticePeriods.DefaultDays(type, lease.BillingFrequency, lease.NoticePeriodDays);
-        var basis = type switch
-        {
-            NoticeType.OwnersIntentionToRecoverPossession => "7 days, after the notice to quit has expired (Lagos Tenancy Law 2011).",
-            NoticeType.NoticeToQuit when lease.NoticePeriodDays is not null => "The notice period agreed in this lease.",
-            NoticeType.NoticeToQuit => "The Lagos Tenancy Law 2011 period for this kind of tenancy. Other states differ.",
-            _ => lease.NoticePeriodDays is null ? "A 30-day default." : "The notice period agreed in this lease.",
-        };
-        return new NoticeDefaultDto(type, served, days, NoticePeriods.ExpiryFor(served, days), basis);
+        var period = await PeriodAsync(lease, type, ct);
+        return new NoticeDefaultDto(type, served, period.Days, NoticePeriods.ExpiryFor(served, period.Days), period.Basis);
     }
 
     public async Task<LeaseNoticeDto> ServeNoticeAsync(Guid leaseId, ServeNoticeRequest request, CancellationToken ct)
@@ -63,8 +56,7 @@ public sealed class LeaseRecordsService(
         }
 
         var expires = request.ExpiresOn
-                      ?? NoticePeriods.ExpiryFor(request.ServedOn,
-                          NoticePeriods.DefaultDays(request.Type, lease.BillingFrequency, lease.NoticePeriodDays));
+                      ?? NoticePeriods.ExpiryFor(request.ServedOn, (await PeriodAsync(lease, request.Type, ct)).Days);
         var userId = currentUser.RequireUserId();
         var notice = new LeaseNotice(lease.OrganizationId, lease.Id,
             new NoticeDetails(request.Type, request.ServedOn, request.Method, request.ServedBy, expires, request.Notes),
@@ -140,6 +132,14 @@ public sealed class LeaseRecordsService(
             });
         await db.SaveChangesAsync(ct);
         return ToDto(report, await NameAsync(userId, ct));
+    }
+
+    /// <summary>The suggested notice period for a lease, using the organization's rules for its property's state.</summary>
+    private async Task<NoticePeriod> PeriodAsync(Lease lease, NoticeType type, CancellationToken ct)
+    {
+        var state = await db.Properties.Where(p => p.Id == lease.PropertyId).Select(p => p.State).SingleAsync(ct);
+        var rules = await db.NoticePeriodRules.Where(r => r.Type == type).ToListAsync(ct);
+        return NoticePeriods.Resolve(type, lease.BillingFrequency, lease.NoticePeriodDays, state, rules);
     }
 
     private async Task<Lease> LoadLeaseAsync(Guid leaseId, CancellationToken ct) =>
