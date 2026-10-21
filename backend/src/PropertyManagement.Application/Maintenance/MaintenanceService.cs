@@ -6,6 +6,7 @@ using PropertyManagement.Application.Common;
 using PropertyManagement.Application.Properties;
 using PropertyManagement.Domain.Common;
 using PropertyManagement.Domain.Maintenance;
+using PropertyManagement.Application.Organizations;
 using PropertyManagement.Domain.Organizations;
 
 namespace PropertyManagement.Application.Maintenance;
@@ -23,7 +24,8 @@ public sealed partial class MaintenanceService(
     IUserDirectory users,
     IEmailSender email,
     IAuditLogger audit,
-    IClock clock)
+    IClock clock,
+    RoleCatalog catalog)
 {
     private bool CanManage => currentOrganization.HasPermission(Permissions.Maintenance.Manage);
 
@@ -195,9 +197,10 @@ public sealed partial class MaintenanceService(
     {
         var members = await db.Memberships.Where(m => m.Status == MembershipStatus.Active)
             .Select(m => new { m.UserId, Roles = m.Roles.Select(r => r.RoleName).ToList() }).ToListAsync(ct);
+        var custom = await catalog.CustomAsync(ct);
         var ids = members.Where(m =>
         {
-            var granted = Roles.PermissionsFor(m.Roles);
+            var granted = Roles.PermissionsFor(m.Roles, custom);
             return granted.Contains(Permissions.Maintenance.Manage) || granted.Contains(Permissions.Maintenance.UpdateAssigned);
         }).Select(m => m.UserId).ToList();
         var people = await users.GetAsync(ids, ct);

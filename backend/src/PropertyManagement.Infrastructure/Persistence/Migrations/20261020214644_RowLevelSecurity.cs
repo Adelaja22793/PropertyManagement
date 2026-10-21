@@ -36,13 +36,22 @@ namespace PropertyManagement.Infrastructure.Persistence.Migrations
                     WHERE SESSION_CONTEXT(N'OrganizationId') IS NULL
                        OR @OrganizationId = CAST(SESSION_CONTEXT(N'OrganizationId') AS uniqueidentifier);
                 """);
-            var predicates = Tables.SelectMany(t => new[]
+            migrationBuilder.Sql(CreatePolicySql(Tables));
+        }
+
+        /// <summary>
+        /// The policy over <paramref name="tables"/>. A later migration that adds an organization-owned table drops the
+        /// policy and runs this again with the longer list.
+        /// </summary>
+        public static string CreatePolicySql(IEnumerable<string> tables)
+        {
+            var predicates = tables.SelectMany(t => new[]
             {
                 $"ADD FILTER PREDICATE rls.fn_OrganizationAccess(OrganizationId) ON dbo.[{t}]",
                 $"ADD BLOCK PREDICATE rls.fn_OrganizationAccess(OrganizationId) ON dbo.[{t}] AFTER INSERT",
                 $"ADD BLOCK PREDICATE rls.fn_OrganizationAccess(OrganizationId) ON dbo.[{t}] AFTER UPDATE",
             });
-            migrationBuilder.Sql($"CREATE SECURITY POLICY rls.OrganizationIsolation\n{string.Join(",\n", predicates)}\nWITH (STATE = ON);");
+            return $"CREATE SECURITY POLICY rls.OrganizationIsolation\n{string.Join(",\n", predicates)}\nWITH (STATE = ON);";
         }
 
         /// <inheritdoc />

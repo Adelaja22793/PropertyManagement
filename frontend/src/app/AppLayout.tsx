@@ -23,6 +23,7 @@ const nav = [
   },
   { to: '/app/branches', label: 'Branches', permission: Permissions.branchesView },
   { to: '/app/team', label: 'Team', permission: Permissions.usersView },
+  { to: '/app/roles', label: 'Roles', permission: Permissions.usersView },
   { to: '/app/audit', label: 'Audit log', permission: Permissions.auditView },
   { to: '/app/settings', label: 'Settings', permission: Permissions.organizationView },
 ]

@@ -17,8 +17,13 @@ public interface ICurrentOrganization
 
     bool HasPermission(string permission);
 
+    /// <summary>What one of the member's roles grants on its own, built-in or custom.</summary>
+    IReadOnlySet<string> PermissionsOf(string role);
+
     /// <summary>The active organization ID, or an exception when there is none.</summary>
     Guid RequireOrganizationId();
 
-    void Set(Guid organizationId, Guid? membershipId, IEnumerable<string> roles, IEnumerable<Guid> branchScope);
+    /// <param name="customRoles">Permissions of the member's custom roles, by key. Built-in roles need no entry.</param>
+    void Set(Guid organizationId, Guid? membershipId, IEnumerable<string> roles, IEnumerable<Guid> branchScope,
+        IReadOnlyDictionary<string, IReadOnlySet<string>>? customRoles = null);
 }

@@ -18,7 +18,8 @@ public sealed class MembershipService(
     IEmailSender email,
     IAuditLogger audit,
     IClock clock,
-    ICrossOrganizationAccess crossOrganization)
+    ICrossOrganizationAccess crossOrganization,
+    RoleCatalog catalog)
 {
     public static readonly TimeSpan InvitationLifetime = TimeSpan.FromDays(7);
 
@@ -29,7 +30,7 @@ public sealed class MembershipService(
             .Include(m => m.Roles).Include(m => m.BranchScopes)
             .Where(m => includeRevoked || m.Status == MembershipStatus.Active)
             // Owners and tenants with portal access only are not staff, so they are not listed as team members.
-            .Where(m => m.Roles.Any(r => staffRoles.Contains(r.RoleName)))
+            .Where(m => m.Roles.Any(r => staffRoles.Contains(r.RoleName) || r.RoleName.StartsWith(CustomRole.KeyPrefix)))
             .ToListAsync(ct);
         var people = await users.GetAsync(memberships.Select(m => m.UserId), ct);
         return memberships
@@ -43,7 +44,7 @@ public sealed class MembershipService(
         var organizationId = currentOrganization.RequireOrganizationId();
         var emailAddress = request.Email.Trim().ToLowerInvariant();
         if (!emailAddress.Contains('@')) throw new DomainException("Enter a valid email address.", "invalid_email");
-        RequireStaffRole(request.Role);
+        await RequireAssignableAsync([request.Role], ct);
         var branchIds = await RequireBranchesAsync(request.BranchIds, ct);
 
         var existingUser = await userLookup.FindByEmailAsync(emailAddress, ct);
@@ -129,6 +130,7 @@ public sealed class MembershipService(
         var hash = TokenHasher.Hash(token.Trim());
         UserInvitation invitation;
         OrganizationMembership? existing;
+        IReadOnlyDictionary<string, IReadOnlySet<string>> custom;
         // Finding the invitation looks across organizations; the writes below are checked against its organization.
         using (crossOrganization.Allow())
         {
@@ -137,7 +139,14 @@ public sealed class MembershipService(
             existing = await db.Memberships.IgnoreQueryFilters().Include(m => m.Roles)
                 .SingleOrDefaultAsync(m => m.OrganizationId == invitation.OrganizationId && m.UserId == userId
                                            && m.Status == MembershipStatus.Active, ct);
+            custom = await RoleCatalog.LoadAsync(db.CustomRoles.Where(r => r.OrganizationId == invitation.OrganizationId),
+                [invitation.RoleName, .. existing?.Roles.Select(r => r.RoleName) ?? []], ct);
         }
+
+        // A custom role deleted after the invitation was sent can't be joined into.
+        if (CustomRole.IsCustomKey(invitation.RoleName) && !custom.ContainsKey(invitation.RoleName))
+            throw new DomainException("This invitation is no longer valid.", "invitation_invalid");
+        Func<string, bool> needsTwoFactor = key => custom.TryGetValue(key, out var granted) && Roles.NeedsTwoFactor(granted);
 
         invitation.Accept(userId, userEmail, clock.UtcNow);
 
@@ -149,13 +158,13 @@ public sealed class MembershipService(
         {
             // A staff member who is also a landlord or tenant keeps one membership and gains the portal role.
             membership = existing;
-            currentOrganization.Set(invitation.OrganizationId, membership.Id, [invitation.RoleName], []);
-            membership.SetRoles(membership.Roles.Select(r => r.RoleName).Append(invitation.RoleName).ToList());
+            currentOrganization.Set(invitation.OrganizationId, membership.Id, [invitation.RoleName], [], custom);
+            membership.SetRoles(membership.Roles.Select(r => r.RoleName).Append(invitation.RoleName).ToList(), needsTwoFactor);
         }
         else
         {
-            membership = new OrganizationMembership(invitation.OrganizationId, userId, [invitation.RoleName]);
-            currentOrganization.Set(invitation.OrganizationId, membership.Id, [invitation.RoleName], invitation.GetBranchIds());
+            membership = new OrganizationMembership(invitation.OrganizationId, userId, [invitation.RoleName], needsTwoFactor);
+            currentOrganization.Set(invitation.OrganizationId, membership.Id, [invitation.RoleName], invitation.GetBranchIds(), custom);
             membership.SetBranchScope(invitation.GetBranchIds());
             db.Memberships.Add(membership);
         }
@@ -172,16 +181,20 @@ public sealed class MembershipService(
 
     public async Task<MemberDto> UpdateAsync(Guid membershipId, UpdateMemberRequest request, CancellationToken ct)
     {
-        foreach (var role in request.Roles) RequireStaffRole(role);
         var membership = await LoadActiveAsync(membershipId, ct);
+        var current = membership.Roles.Select(r => r.RoleName).ToHashSet();
+        // Roles the member already holds may stay; only new ones are checked against what the caller may give.
+        await RequireAssignableAsync(request.Roles.Where(r => !current.Contains(r)).ToList(), ct);
+        if (request.Roles.Count == 0 || request.Roles.Any(r => !Roles.IsStaff(r)))
+            throw new DomainException("Choose a staff role for this member.", "invalid_role");
         var before = membership.Roles.Select(r => r.RoleName).Order().ToList();
 
         if (before.Contains(Roles.OrganizationAdmin) && !request.Roles.Contains(Roles.OrganizationAdmin))
             await EnsureAnotherAdminAsync(membership.Id, ct);
 
         // Portal roles come from owner and tenant links, so a staff role edit keeps them.
-        var portalRoles = membership.Roles.Select(r => r.RoleName).Where(r => !Roles.StaffRoles.Contains(r));
-        membership.SetRoles(request.Roles.Concat(portalRoles).ToList());
+        var portalRoles = membership.Roles.Select(r => r.RoleName).Where(r => !Roles.IsStaff(r));
+        membership.SetRoles(request.Roles.Concat(portalRoles).ToList(), await catalog.NeedsTwoFactorAsync(ct));
         if (request.BranchIds is not null) membership.SetBranchScope(await RequireBranchesAsync(request.BranchIds, ct));
 
         audit.Record("member.updated", nameof(OrganizationMembership), membership.Id.ToString(),
@@ -227,10 +240,18 @@ public sealed class MembershipService(
         return ids;
     }
 
-    private static void RequireStaffRole(string role)
+    /// <summary>
+    /// Staff roles, built-in or this organization's own, whose permissions the caller holds: nobody can give someone
+    /// more than they have themselves.
+    /// </summary>
+    private async Task RequireAssignableAsync(IReadOnlyList<string> roles, CancellationToken ct)
     {
-        if (!Roles.StaffRoles.Contains(role))
-            throw new DomainException($"'{role}' is not a staff role that can be assigned here.", "invalid_role");
+        var custom = await catalog.CustomAsync(ct);
+        foreach (var role in roles)
+            if (!Roles.StaffRoles.Contains(role) && !custom.ContainsKey(role))
+                throw new DomainException($"'{role}' is not a staff role that can be assigned here.", "invalid_role");
+        if (Roles.PermissionsFor(roles, custom).Any(p => !currentOrganization.HasPermission(p)))
+            throw new ForbiddenException("You can't give someone a role with permissions you don't have yourself.");
     }
 
     private static MemberDto ToDto(OrganizationMembership m, UserSummary? user) => new(

@@ -6,6 +6,7 @@ using PropertyManagement.Application.Properties;
 using PropertyManagement.Domain.Common;
 using PropertyManagement.Domain.Documents;
 using PropertyManagement.Domain.Listings;
+using PropertyManagement.Application.Organizations;
 using PropertyManagement.Domain.Organizations;
 
 namespace PropertyManagement.Application.Listings;
@@ -22,13 +23,14 @@ public sealed class ListingService(
     ICurrentUser currentUser,
     IUserDirectory users,
     IAuditLogger audit,
-    IClock clock)
+    IClock clock,
+    RoleCatalog catalog)
 {
     /// <summary>True when the member's listings rights come only from the Agent role.</summary>
     private bool AgentOnly =>
         !currentOrganization.Roles.Where(r => r != Roles.Agent).Any(r =>
         {
-            var granted = Roles.PermissionsFor([r]);
+            var granted = currentOrganization.PermissionsOf(r);
             return granted.Contains(Permissions.Listings.Manage) || granted.Contains(Permissions.Listings.Leads);
         });
 
@@ -150,7 +152,8 @@ public sealed class ListingService(
     {
         var members = await db.Memberships.Where(m => m.Status == MembershipStatus.Active)
             .Select(m => new { m.UserId, Roles = m.Roles.Select(r => r.RoleName).ToList() }).ToListAsync(ct);
-        var ids = members.Where(m => Roles.PermissionsFor(m.Roles).Contains(Permissions.Listings.Leads)).Select(m => m.UserId).ToList();
+        var custom = await catalog.CustomAsync(ct);
+        var ids = members.Where(m => Roles.PermissionsFor(m.Roles, custom).Contains(Permissions.Listings.Leads)).Select(m => m.UserId).ToList();
         var people = await users.GetAsync(ids, ct);
         return people.Values.OrderBy(p => p.FullName).Select(p => new ListingAgentDto(p.Id, p.FullName, p.Email)).ToList();
     }

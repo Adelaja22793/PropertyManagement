@@ -1,8 +1,8 @@
 namespace PropertyManagement.Application.Authorization;
 
 /// <summary>
-/// Default roles from section 5 of the design. Phase 1 keeps role definitions in code;
-/// organization-defined custom roles come later and will be stored per organization.
+/// Built-in roles from section 5 of the design, defined in code. Organizations can add their own roles from the
+/// permission list (<see cref="Domain.Organizations.CustomRole"/>); members hold those by their "custom:" key.
 /// </summary>
 public static class Roles
 {
@@ -93,8 +93,40 @@ public static class Roles
     /// <summary>Roles that see only the properties assigned to them, unless another role gives wider access.</summary>
     public static readonly IReadOnlySet<string> AssignedPropertyRoles = new HashSet<string> { PropertyManager };
 
+    /// <summary>Display names of the built-in staff roles, in the order they are offered.</summary>
+    public static readonly IReadOnlyList<(string Key, string Name, string Description)> StaffRoleNames =
+    [
+        (OrganizationAdmin, "Organization admin", "Company settings, staff, roles, all properties and finance."),
+        (BranchManager, "Branch manager", "Staff and properties within their branches."),
+        (PropertyManager, "Property manager", "Units, tenants, leases, notices and repairs for the properties assigned to them."),
+        (Accountant, "Accountant", "Invoices, payments, reconciliation, expenses, payouts and reports."),
+        (FinanceApprover, "Finance approver", "Approves payouts, refunds, credit notes, write-offs and deposit deductions."),
+        (Agent, "Agent", "Listings, enquiries and viewings for the listings they're in charge of."),
+        (MaintenanceStaff, "Maintenance staff", "Updates the repair jobs given to them."),
+    ];
+
+    /// <summary>
+    /// Permissions only roles with two-step sign-in hold among the built-in roles. A custom role with any of them needs
+    /// two-step sign-in too, so a custom role can't be used to get admin or finance powers without it (design 11.1).
+    /// </summary>
+    public static readonly IReadOnlySet<string> TwoFactorPermissions = Permissions.All
+        .Except(RolePermissions.Where(r => StaffRoles.Contains(r.Key) && !Domain.Organizations.OrganizationMembership.TwoFactorRoles.Contains(r.Key))
+            .SelectMany(r => r.Value))
+        .ToHashSet();
+
     public static bool Exists(string role) => RolePermissions.ContainsKey(role);
 
-    public static IReadOnlySet<string> PermissionsFor(IEnumerable<string> roles) =>
-        roles.Where(RolePermissions.ContainsKey).SelectMany(r => RolePermissions[r]).ToHashSet();
+    /// <summary>A staff role: a built-in one, or one the organization defined.</summary>
+    public static bool IsStaff(string role) => StaffRoles.Contains(role) || Domain.Organizations.CustomRole.IsCustomKey(role);
+
+    public static IReadOnlySet<string> BuiltInPermissions(string role) =>
+        RolePermissions.TryGetValue(role, out var granted) ? granted : new HashSet<string>();
+
+    public static bool NeedsTwoFactor(IEnumerable<string> permissions) => permissions.Any(TwoFactorPermissions.Contains);
+
+    /// <param name="custom">Permissions of the organization's custom roles, by key. Unknown keys grant nothing.</param>
+    public static IReadOnlySet<string> PermissionsFor(IEnumerable<string> roles, IReadOnlyDictionary<string, IReadOnlySet<string>>? custom = null) =>
+        roles.SelectMany<string, string>(r => RolePermissions.TryGetValue(r, out var granted) ? granted
+                : custom is not null && custom.TryGetValue(r, out var defined) ? defined : Array.Empty<string>())
+            .ToHashSet();
 }

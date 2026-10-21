@@ -22,7 +22,7 @@ public sealed class PropertyAccess(IAppDbContext db, ICurrentOrganization curren
             query = query.Where(p => p.BranchId != null && branches.Contains(p.BranchId.Value));
 
         var widerRoles = roles.Where(r => !Roles.AssignedPropertyRoles.Contains(r))
-            .Any(r => Roles.PermissionsFor([r]).Contains(Permissions.Properties.View));
+            .Any(r => currentOrganization.PermissionsOf(r).Contains(Permissions.Properties.View));
         if (!widerRoles)
         {
             var userId = currentUser.RequireUserId();

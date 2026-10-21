@@ -22,6 +22,8 @@ public static class DependencyInjection
         services.AddSingleton<IClock, SystemClock>();
         services.AddScoped<OrganizationService>();
         services.AddScoped<MembershipService>();
+        services.AddScoped<RoleCatalog>();
+        services.AddScoped<CustomRoleService>();
         services.AddScoped<BranchService>();
         services.AddScoped<AuditQueryService>();
         services.AddScoped<PropertyAccess>();

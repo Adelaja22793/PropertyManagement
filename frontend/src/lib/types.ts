@@ -13,6 +13,8 @@ export interface OrganizationSummary {
   twoFactorRequiredSinceUtc: string | null
   /** Set when this is platform support with an approved grant: read-only access ends at this time. */
   supportAccessUntilUtc?: string | null
+  /** Names of the member's custom roles here, by key. */
+  roleNames?: Record<string, string> | null
 }
 
 export type SupportGrantStatus = 'Pending' | 'Active' | 'Declined' | 'Revoked' | 'Expired'
@@ -366,7 +368,17 @@ export interface ScreeningCheck {
 
 export const LeaseStatuses = ['Draft', 'Active', 'Renewed', 'Ended', 'Terminated', 'Cancelled'] as const
 export type LeaseStatus = (typeof LeaseStatuses)[number]
-export const LeaseStages = ['Draft', 'Upcoming', 'Active', 'Expiring', 'HoldingOver', 'Renewed', 'Ended', 'Terminated', 'Cancelled'] as const
+export const LeaseStages = [
+  'Draft',
+  'Upcoming',
+  'Active',
+  'Expiring',
+  'HoldingOver',
+  'Renewed',
+  'Ended',
+  'Terminated',
+  'Cancelled',
+] as const
 export type LeaseStage = (typeof LeaseStages)[number]
 export const LeaseChargeTypes = ['ServiceCharge', 'AgencyFee', 'LegalFee', 'CautionDeposit', 'StampDuty', 'Other'] as const
 export type LeaseChargeType = (typeof LeaseChargeTypes)[number]
@@ -508,14 +520,33 @@ export interface LeaseInspections {
 // Maintenance (Phase 5)
 
 export const MaintenanceCategories = [
-  'Plumbing', 'Electrical', 'Carpentry', 'Painting', 'Roofing', 'Appliances', 'Generator', 'WaterSupply', 'Security',
-  'Cleaning', 'PestControl', 'Structural', 'Other',
+  'Plumbing',
+  'Electrical',
+  'Carpentry',
+  'Painting',
+  'Roofing',
+  'Appliances',
+  'Generator',
+  'WaterSupply',
+  'Security',
+  'Cleaning',
+  'PestControl',
+  'Structural',
+  'Other',
 ] as const
 export type MaintenanceCategory = (typeof MaintenanceCategories)[number]
 export const MaintenanceUrgencies = ['Emergency', 'High', 'Normal', 'Low'] as const
 export type MaintenanceUrgency = (typeof MaintenanceUrgencies)[number]
 export const MaintenanceStatuses = [
-  'Submitted', 'UnderReview', 'Approved', 'Assigned', 'InProgress', 'AwaitingParts', 'Completed', 'Rejected', 'Cancelled',
+  'Submitted',
+  'UnderReview',
+  'Approved',
+  'Assigned',
+  'InProgress',
+  'AwaitingParts',
+  'Completed',
+  'Rejected',
+  'Cancelled',
 ] as const
 export type MaintenanceStatus = (typeof MaintenanceStatuses)[number]
 export type MaintenanceUpdateKind = 'Created' | 'Comment' | 'StatusChanged' | 'Assigned' | 'Estimated' | 'OwnerApproved' | 'Feedback'
@@ -977,4 +1008,21 @@ export interface ReportTable {
   totals: ReportCell[] | null
   truncated: boolean
   generatedAtUtc: string
+}
+
+export interface Role {
+  key: string
+  /** Set for a custom role. */
+  id: string | null
+  name: string
+  description: string | null
+  isCustom: boolean
+  permissions: string[]
+  requiresTwoFactor: boolean
+  memberCount: number
+}
+
+export interface PermissionGroup {
+  group: string
+  permissions: string[]
 }
