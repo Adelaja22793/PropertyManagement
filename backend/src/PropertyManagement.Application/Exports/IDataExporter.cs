@@ -13,4 +13,7 @@ public interface IDataExporter
 
     /// <summary>Returns the person's name, for the file name.</summary>
     Task<string> WriteOwnerAsync(Stream output, Guid ownerId, CancellationToken ct);
+
+    /// <summary>Returns the person's name, for the file name.</summary>
+    Task<string> WriteGuarantorAsync(Stream output, Guid guarantorId, CancellationToken ct);
 }

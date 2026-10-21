@@ -111,6 +111,37 @@ public sealed class DataExporter(
         return owner.Name;
     }
 
+    /// <summary>
+    /// A guarantor's own record and the leases they stand behind: only the terms they guarantee, not the rest of the
+    /// tenant's file. Their signed form is filed with the tenant's documents, so it comes with the tenant's export.
+    /// </summary>
+    public async Task<string> WriteGuarantorAsync(Stream output, Guid guarantorId, CancellationToken ct)
+    {
+        var guarantor = await db.Guarantors.AsNoTracking().SingleOrDefaultAsync(g => g.Id == guarantorId, ct)
+                        ?? throw new NotFoundException("Guarantor");
+        var tenantName = await db.Tenants.Where(t => t.Id == guarantor.TenantId).Select(t => t.Name).SingleAsync(ct);
+        var leases = await db.LeaseGuarantors.Where(lg => lg.GuarantorId == guarantorId)
+            .Join(db.Leases, lg => lg.LeaseId, l => l.Id, (lg, l) => l)
+            .OrderBy(l => l.StartDate).AsNoTracking().ToListAsync(ct);
+
+        using (var zip = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            await AddAsync(zip, "guarantor.csv", db.Guarantors.Where(g => g.Id == guarantorId), ct);
+            var csv = new StringBuilder();
+            Line(csv, ["LeaseId", "Reference", "TenantGuaranteed", "Status", "StartDate", "EndDate", "RentAmount", "Currency",
+                "BillingFrequency"]);
+            foreach (var l in leases)
+                Line(csv, [l.Id, l.Reference, tenantName, l.Status, l.StartDate, l.EndDate, l.RentAmount, l.Currency, l.BillingFrequency]);
+            await WriteTextAsync(zip, "guaranteed-leases.csv", csv.ToString(), ct);
+            await AddReadmeAsync(zip, $"everything held about the guarantor {guarantor.FullName}", false, ct,
+                "A signed guarantor form, if one was uploaded, is filed with the tenant's documents and is not included here.");
+        }
+
+        await audit.RecordNowAsync("person.exported", "Guarantor", guarantorId.ToString(),
+            details: new { leases = leases.Count }, organizationId: guarantor.OrganizationId, ct: ct);
+        return guarantor.FullName;
+    }
+
     /// <summary>A person's documents that are still stored. Identity documents only for those allowed to see them.</summary>
     private IQueryable<Document> PersonDocuments(System.Linq.Expressions.Expression<Func<Document, bool>> filter)
     {
@@ -162,7 +193,7 @@ public sealed class DataExporter(
         return count;
     }
 
-    private async Task AddReadmeAsync(ZipArchive zip, string what, bool includesFiles, CancellationToken ct)
+    private async Task AddReadmeAsync(ZipArchive zip, string what, bool includesFiles, CancellationToken ct, string? filesNote = null)
     {
         var text = $"""
             This download holds {what}, as of {clock.UtcNow:yyyy-MM-dd HH:mm} UTC.
@@ -172,7 +203,7 @@ public sealed class DataExporter(
             starts with an apostrophe.
 
             Identity numbers (NIN, BVN) are stored encrypted and are not included; their last four digits are.
-            {(includesFiles ? "Stored files are in the files folder, named by document id." : "Stored files are not included; ask for them with the files option.")}
+            {filesNote ?? (includesFiles ? "Stored files are in the files folder, named by document id." : "Stored files are not included; ask for them with the files option.")}
 
             Keep this download safe: it contains personal data.
             """;
