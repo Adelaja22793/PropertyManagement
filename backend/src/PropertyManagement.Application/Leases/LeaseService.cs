@@ -92,6 +92,8 @@ public sealed partial class LeaseService(
         }
         await EnsureNoOverlapAsync(lease, ct);
 
+        // Writing the unit row makes two activations on the same unit at the same moment collide on its row version.
+        unit.RecordLeaseActivation();
         lease.Activate(currentUser.RequireUserId(), clock.UtcNow);
         previous?.MarkRenewed(clock.UtcNow);
         audit.Record("lease.activated", nameof(Lease), lease.Id.ToString(),
