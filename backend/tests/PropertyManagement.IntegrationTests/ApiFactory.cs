@@ -46,6 +46,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             // Tests run the lease schedule themselves, so it never races a test's own changes.
             ["Jobs:Leases:Enabled"] = "false",
             ["Jobs:Subscriptions:Enabled"] = "false",
+            ["Jobs:Email:Enabled"] = "false",
             ["Storage:LocalPath"] = _files,
         }));
         builder.ConfigureTestServices(services =>

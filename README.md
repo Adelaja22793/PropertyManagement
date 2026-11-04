@@ -154,12 +154,30 @@ npm run dev                                # http://localhost:5173 (forwards /ap
 
 Uploaded files go to `App_Data/documents` next to the API build unless `Storage:LocalPath` says otherwise.
 
-Emails (invitations, password resets) are only logged in development. The person who sends an invitation gets a link to share.
+### Email
+
+Every email (invitations, password resets, reminders, notices) is first saved to an outbox table with its body encrypted, so a slow or broken mail server never fails the request that sent it. A background job (`EmailDeliveryJob`) sends it within seconds and retries failures after 1, 5, 15 and 30 minutes, then 1, 2 and 4 hours. After 8 failed attempts it gives up and logs an error. Sent emails are deleted after 7 days and abandoned ones after 30, since bodies can hold personal data and single-use links.
+
+To send real email, point it at any SMTP provider (keep the password in user secrets or the production secrets manager):
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `Email:FromAddress` | (required) | Sender address, for example `noreply@yourcompany.ng` |
+| `Email:FromName` | Property Management | Sender name |
+| `Email:Smtp:Host` | (empty) | Mail server. When empty, emails are only logged (subject and recipient, never the body) |
+| `Email:Smtp:Port` | 587 | |
+| `Email:Smtp:Security` | StartTls | `StartTls`, `SslOnConnect` or `None` |
+| `Email:Smtp:Username` / `Password` | (empty) | Sign-in, skipped when the username is empty |
+| `Email:Smtp:TimeoutSeconds` | 30 | |
+| `Jobs:Email:IntervalSeconds` | 15 | How often the job checks for retries; new emails wake it at once |
+| `Jobs:Email:Enabled` | true | |
+
+Without a mail server, the person who sends an invitation still gets a link to share.
 
 ## Tests
 
 ```bash
-cd backend && dotnet test        # 114 unit + 120 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
+cd backend && dotnet test        # 114 unit + 126 integration tests (needs SQL Server; set PMS_TEST_SQL to use another)
 cd frontend && npm test          # 53 component and client tests
 cd frontend && npm run e2e       # browser journeys on desktop and phone sizes (needs the API running; the support test
                                  # marks a user as platform support with docker exec on the mssql container, or PMS_E2E_SQLCMD)
@@ -279,7 +297,7 @@ State-changing requests must send `X-Requested-With: XMLHttpRequest` (CSRF prote
 
 ## Known gaps before production
 
-- A real email provider (invitations and resets are only logged).
+- A screen for staff to see emails that could not be sent (today they are in the `OutboundEmails` table and the log), and HTML email templates (emails are plain text).
 - Taking subscription payments online, SaaS invoices and plan prices (prices are 0 until decided; platform staff record paid-up dates by hand). Support access is read-only only; a write option needs a decision on what support may change.
 - Data protection (design 11.4): erasing a person's data and per-record retention periods wait for the data protection adviser, as do the privacy notice and consent wording. Large exports are built while the admin waits; a background job with an emailed link would suit very large companies.
 - The audit table is append-only in code and by a database trigger. A database owner can still drop the trigger, so in production run the app under a login without ALTER rights on the schema.

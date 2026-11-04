@@ -26,6 +26,8 @@ builder.Services.AddSingleton<LeaseScheduleJob>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<LeaseScheduleJob>());
 builder.Services.AddSingleton<SubscriptionJob>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<SubscriptionJob>());
+builder.Services.AddSingleton<EmailDeliveryJob>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<EmailDeliveryJob>());
 
 builder.Services
     .AddIdentity<AppUser, IdentityRole<Guid>>(o =>
