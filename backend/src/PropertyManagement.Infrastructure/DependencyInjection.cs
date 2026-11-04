@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PropertyManagement.Application.Abstractions;
+using PropertyManagement.Infrastructure.Email;
 using PropertyManagement.Infrastructure.Persistence;
 using PropertyManagement.Infrastructure.Services;
 
@@ -30,7 +31,15 @@ public static class DependencyInjection
         services.AddScoped<UserDirectory>();
         services.AddScoped<IUserDirectory>(sp => sp.GetRequiredService<UserDirectory>());
         services.AddScoped<IUserLookup>(sp => sp.GetRequiredService<UserDirectory>());
-        services.AddSingleton<IEmailSender, LoggingEmailSender>();
+        // Email goes to the outbox first and is sent by EmailDeliveryJob, through SMTP when Email:Smtp:Host is set.
+        services.AddSingleton<EmailOutboxSignal>();
+        services.AddSingleton<OutboxEmailSender>();
+        services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<OutboxEmailSender>());
+        services.AddScoped<EmailDelivery>();
+        services.AddSingleton<IEmailTransport>(sp =>
+            string.IsNullOrWhiteSpace(sp.GetRequiredService<IConfiguration>()["Email:Smtp:Host"])
+                ? ActivatorUtilities.CreateInstance<LoggingEmailTransport>(sp)
+                : ActivatorUtilities.CreateInstance<SmtpEmailTransport>(sp));
         services.AddSingleton<IFileStore, LocalFileStore>();
         services.AddScoped<Application.Exports.IDataExporter, DataExporter>();
         services.AddSingleton<IMalwareScanner, ConfiguredMalwareScanner>();

@@ -55,6 +55,21 @@ internal sealed class SupportGrantConfiguration : IEntityTypeConfiguration<Suppo
     }
 }
 
+internal sealed class OutboundEmailConfiguration : IEntityTypeConfiguration<Email.OutboundEmail>
+{
+    public void Configure(EntityTypeBuilder<Email.OutboundEmail> b)
+    {
+        b.ToTable("OutboundEmails");
+        b.Property(x => x.ToAddress).HasMaxLength(256).IsRequired();
+        b.Property(x => x.Subject).HasMaxLength(300).IsRequired();
+        b.Property(x => x.ProtectedBody).IsRequired();
+        b.Property(x => x.LastError).HasMaxLength(500);
+        b.Property(x => x.RowVersion).IsRowVersion();
+        b.Ignore(x => x.IsPending);
+        b.HasIndex(x => new { x.SentAtUtc, x.GaveUpAtUtc, x.NextAttemptAtUtc });
+    }
+}
+
 internal sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
 {
     public void Configure(EntityTypeBuilder<AuditLog> b)

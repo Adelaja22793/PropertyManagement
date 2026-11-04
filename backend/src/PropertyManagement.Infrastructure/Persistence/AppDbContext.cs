@@ -60,6 +60,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentOrgani
     public DbSet<Lead> Leads => Set<Lead>();
     public DbSet<MaintenanceUpdate> MaintenanceUpdates => Set<MaintenanceUpdate>();
 
+    /// <summary>The email outbox. Not organization data: it serves the whole platform, sign-in emails included.</summary>
+    public DbSet<Email.OutboundEmail> OutboundEmails => Set<Email.OutboundEmail>();
+
     /// <summary>Data Protection keys used to encrypt identity numbers. Shared by all API instances.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
